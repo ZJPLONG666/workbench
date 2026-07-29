@@ -510,9 +510,9 @@ html[data-theme="dark"] .home-pill.dark-pill{border:1px solid rgba(255,255,255,.
 .shop-av.xs{width:16px;height:16px}
 .shop-badge{width:26px;height:26px;border-radius:50%;background:var(--accent);flex-shrink:0;border:1.5px solid var(--line)}
 /* 账号管理卡片主账号大圆头像 */
-.account-card-av{width:88px;height:88px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 18px rgba(0,0,0,.10);border:3px solid #141414;overflow:hidden}
+.account-card-av{width:96px;height:96px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 8px 22px rgba(0,0,0,.12);border:3px solid #141414;overflow:hidden}
 .account-card-av img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
-@media (max-width:480px){.account-card-av{width:72px;height:72px;border-width:2px}}
+@media (max-width:480px){.account-card-av{width:78px;height:78px;border-width:2px}}
 /* 头部小头像（无外描边，更接近截图） */
 .shop-av-line{width:20px;height:20px;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;flex-shrink:0}
 
@@ -1827,18 +1827,14 @@ function renderAccounts(){
     const subs=ACCOUNTS.filter(a=>a.parent===m.id);
     const group=[m,...subs];
     return `<div class="card ${cardCls[m.id]||''} p-5" style="border-radius:30px">
-      <div class="flex items-start gap-3 mb-4 flex-wrap">
-        <div class="account-card-av">${shopAvatar(m.shop,88)}</div>
+      <div class="flex items-center gap-4 mb-5">
+        <div class="account-card-av">${shopAvatar(m.shop,96)}</div>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <b class="text-base font-black">${esc(m.name)}</b>
-            <span class="tag" style="background:#fff;color:var(--ink-2)">${m.role} ·</span>
+          <b class="block text-xl font-black tracking-tight" style="color:var(--ink);line-height:1.1">${esc(m.name)}</b>
+          <div class="mt-1.5 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full" style="background:${m.hue}"></span>
+            <span class="text-xs font-bold" style="color:var(--ink-2);opacity:.65">主账号</span>
           </div>
-          <div class="mt-1 flex items-center gap-1.5 flex-wrap">
-            <img class="shop-av-line" src="${SHOP_AVATAR[m.shop]||''}" alt="${esc(m.shop)}">
-            <span class="tag" style="background:#fff;color:var(--ink-2)">${esc(m.shop)}</span>
-          </div>
-          <p class="text-xs mt-1.5 font-bold" style="color:rgba(0,0,0,.55)">子账号：${subs.map(s=>esc(s.name)).join('、')}</p>
         </div>
       </div>
       <div class="space-y-3">${group.map(a=>accountRow(a,t,y)).join('')}</div>
