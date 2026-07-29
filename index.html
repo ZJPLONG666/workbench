@@ -539,7 +539,7 @@ html[data-theme="dark"] .shop-select-item.selected{background:rgba(245,213,74,.2
 .btn-danger{background:#e23b3b;color:#fff;border:none;padding:10px 18px;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(226,59,59,.3)}
 .btn-danger:hover{filter:brightness(.94)}
 .issue-table-scroll{overflow-x:auto;border-radius:18px;border:1.5px solid var(--line);background:var(--card-bg);margin-top:14px}
-.issue-table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;font-size:13px}
+.issue-table{border-collapse:collapse;table-layout:fixed;width:max-content;font-size:13px}
 .issue-table th{background:var(--surface,#f2f2f4);text-align:left;padding:11px 12px;font-weight:800;color:var(--ink);border-bottom:1.5px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1;position:relative}
 .issue-table td{padding:4px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
 .issue-table tr:hover td{background:rgba(0,0,0,.03)}
@@ -547,8 +547,12 @@ html[data-theme="dark"] .shop-select-item.selected{background:rgba(245,213,74,.2
 .cell-input{width:100%;min-width:0;border:1px solid transparent;background:transparent;padding:8px;border-radius:8px;font-size:13px;color:var(--ink);outline:none;font-family:inherit;cursor:text}
 .cell-input:focus{border-color:var(--accent,#FFD66B);background:#fff;box-shadow:0 0 0 3px rgba(255,214,107,.25)}
 .cell-input.cell-sel{background:rgba(255,214,107,.30);box-shadow:inset 0 0 0 2px var(--accent,#FFD66B)}
-.col-resizer{position:absolute;top:0;right:-3px;width:12px;height:100%;cursor:col-resize;z-index:4;touch-action:none;user-select:none}
-.col-resizer:hover,.col-resizer.active{background:linear-gradient(var(--accent,#FFD66B),var(--accent,#FFD66B)) no-repeat center/2px 64%}
+.issue-ctx{position:fixed;z-index:9999;min-width:172px;background:var(--card-bg,#fff);border:1.5px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 14px 38px rgba(0,0,0,.20);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none;overflow:hidden}
+.issue-ctx-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;user-select:none}
+.issue-ctx-item:hover{background:var(--accent,#FFD66B)}
+.issue-ctx-item .k{font-size:11px;font-weight:700;opacity:.55}
+.issue-ctx-item.disabled{opacity:.4;cursor:not-allowed}
+.issue-ctx-item.disabled:hover{background:transparent}
 .cell-thumb{max-width:46px;max-height:46px;border-radius:6px;display:block;margin-top:3px;border:1px solid var(--line)}
 .issue-empty{text-align:center;padding:48px 0;color:var(--ink-2);font-weight:700;font-size:14px}
 .issue-delbar{display:flex;align-items:center;gap:14px;margin-top:14px;padding:12px 18px;background:#fff4f4;border:1.5px solid #f3c2c2;border-radius:14px;justify-content:flex-end;animation:slideUp .2s ease}
@@ -1169,20 +1173,17 @@ function openApp(name){
 /* ===================== 问题订单 ===================== */
 const ISSUE_FIELDS=['客户名','卖出号','采购单号','物流单号','问题','怎么处理','商家回复状态','目前进度更新','客诉时间','客户问题截图'];
 const ISSUE_DEF_W=[120,130,140,140,140,150,140,150,120,160];
-let issueColW=loadIssueColW();
 let issueAnchor=null;   // {ri,ci}
 let issueAnchor2=null;  // 区域选择终点（Shift）
 let issueClip=null;     // 2D 数组
-function loadIssueColW(){try{const a=JSON.parse(localStorage.getItem('issue_colw'));if(Array.isArray(a)&&a.length===ISSUE_FIELDS.length)return a;}catch(e){}return ISSUE_DEF_W.slice();}
-function saveIssueColW(){try{localStorage.setItem('issue_colw',JSON.stringify(issueColW));}catch(e){}}
 function newIssueRow(){const o={id:uid()};ISSUE_FIELDS.forEach(f=>o[f]='');return o;}
 function renderIssues(){
   const wrap=document.getElementById('issuesWrap'); if(!wrap)return;
   const rows=DB.issues||[];
-  const cols='<col class="col-check" style="width:46px">'+ISSUE_FIELDS.map((f,i)=>`<col style="width:${issueColW[i]}px">`).join('');
+  const cols='<col class="col-check" style="width:46px">'+ISSUE_FIELDS.map((f,i)=>`<col style="width:${ISSUE_DEF_W[i]}px">`).join('');
   let html='<div class="issue-table-scroll"><table class="issue-table"><colgroup>'+cols+'</colgroup><thead><tr>'
     +'<th class="col-check"><input type="checkbox" id="issueCheckAll" onchange="issueCheckAll(this)" title="全选"></th>'
-    +ISSUE_FIELDS.map((f,i)=>`<th>${esc(f)}<span class="col-resizer" data-col="${i}" onpointerdown="issueStartResize(event,${i})" title="拖拽调整列宽"></span></th>`).join('')
+    +ISSUE_FIELDS.map((f,i)=>`<th>${esc(f)}</th>`).join('')
     +'</tr></thead><tbody>';
   if(rows.length===0){
     html+=`<tr><td colspan="${ISSUE_FIELDS.length+1}" class="issue-empty">暂无问题订单，点右上角「＋ 新增问题订单」开始记录</td></tr>`;
@@ -1192,7 +1193,7 @@ function renderIssues(){
         const v=r[f]||'';
         const isImg=/^https?:\/\//.test(v)||v.startsWith('data:image');
         const inp=`<input class="cell-input" data-id="${r.id}" data-ri="${ri}" data-ci="${ci}" data-field="${esc(f)}" value="${esc(v)}" onclick="issueCellClick(event,this)">`;
-        return isImg?`<td>${inp}<img class="cell-thumb" src="${esc(v)}" alt="截图"></td>`:`<td>${inp}</td>`;
+        return isImg?`<td oncontextmenu="issueCtx(event,this)">${inp}<img class="cell-thumb" src="${esc(v)}" alt="截图"></td>`:`<td oncontextmenu="issueCtx(event,this)">${inp}</td>`;
       }).join('');
       return `<tr data-id="${r.id}"><td class="col-check"><input type="checkbox" class="issue-row-check" value="${r.id}"></td>${cells}</tr>`;
     }).join('');
@@ -1234,14 +1235,29 @@ function issueCheckAll(el){
   const bar=document.getElementById('issueDelbar');
   if(bar){bar.style.display=checked.length?'flex':'none';const c=document.getElementById('issueDelCount');if(c)c.textContent='已选 '+checked.length+' 行，删除后不可恢复';}
 }
-function issueStartResize(e,colIndex){
+let issueCtxEl=null;
+function issueCtx(e,td){
   e.preventDefault(); e.stopPropagation();
-  const handle=e.currentTarget; handle.classList.add('active');
-  const startX=e.clientX; const startW=issueColW[colIndex];
-  function mv(ev){ issueColW[colIndex]=Math.max(60,startW+(ev.clientX-startX)); const col=document.querySelectorAll('.issue-table colgroup col')[colIndex+1]; if(col)col.style.width=issueColW[colIndex]+'px'; }
-  function up(){ handle.classList.remove('active'); saveIssueColW(); window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); }
-  window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  const inp=td.querySelector('.cell-input'); if(!inp)return;
+  issueAnchor={ri:+inp.dataset.ri,ci:+inp.dataset.ci}; issueAnchor2=null; applyIssueSel();
+  if(!issueCtxEl){ issueCtxEl=document.createElement('div'); issueCtxEl.className='issue-ctx'; document.body.appendChild(issueCtxEl); issueCtxEl.addEventListener('contextmenu',ev=>ev.preventDefault()); }
+  const canPaste=!!issueClip||(navigator.clipboard&&window.isSecureContext);
+  issueCtxEl.innerHTML='<div class="issue-ctx-item" data-act="copy">复制<span class="k">Ctrl+C</span></div>'
+    +'<div class="issue-ctx-item" data-act="cut">剪切<span class="k">Ctrl+X</span></div>'
+    +'<div class="issue-ctx-item'+(canPaste?'':' disabled')+'" data-act="paste">粘贴<span class="k">Ctrl+V</span></div>';
+  issueCtxEl.querySelectorAll('.issue-ctx-item').forEach(it=>{
+    it.onclick=()=>{ if(it.classList.contains('disabled'))return; const act=it.dataset.act; hideIssueCtx(); if(act==='copy')issueCopy(false); else if(act==='cut')issueCopy(true); else issuePaste(); };
+  });
+  let x=e.clientX, y=e.clientY; const w=190;
+  if(x+w>window.innerWidth) x=window.innerWidth-w-8;
+  if(y+130>window.innerHeight) y=window.innerHeight-130-8;
+  issueCtxEl.style.left=x+'px'; issueCtxEl.style.top=y+'px';
+  issueCtxEl.style.display='block';
 }
+function hideIssueCtx(){ if(issueCtxEl)issueCtxEl.style.display='none'; }
+document.addEventListener('click',hideIssueCtx);
+document.addEventListener('scroll',hideIssueCtx,true);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')hideIssueCtx(); });
 function issueCopy(cut){
   if(!issueAnchor)return;
   const b=issueAnchor2||issueAnchor;
