@@ -917,16 +917,19 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <section id="view-sync" class="view">
     <h2 class="section-h mb-5">多设备同步</h2>
     <div class="card p-6 mb-4">
-      <h3 class="font-black mb-2">☁️ 云端同步</h3>
-      <p class="text-sm mb-4 leading-relaxed font-semibold" style="color:var(--ink-2)">在两台设备上输入<b style="color:var(--ink)">同一个同步码</b>，数据就会自动互通（每次保存 + 每15秒自动同步）。<b>首次使用</b>：留空点「连接」，系统会自动生成一个同步码，把这个码告诉老婆即可。</p>
-      <div class="flex gap-2 flex-wrap">
-        <input class="field" style="max-width:300px" id="syncCodeInput" placeholder="输入同步码（首次留空自动生成）">
-        <button class="pillbtn dark" onclick="syncConnect()">连接</button>
-        <button class="pillbtn" onclick="syncPull(true)">立即同步</button>
-        <button class="pillbtn" onclick="syncDisconnect()" style="color:#dc2626">断开</button>
+      <h3 class="font-black mb-2">☁️ GitHub 云端同步</h3>
+      <p class="text-sm mb-4 leading-relaxed font-semibold" style="color:var(--ink-2)">用 <b style="color:var(--ink)">GitHub Gist</b> 做云端同步（每次保存 + 每15秒自动同步）。<b>首次使用</b>：到 GitHub 生成一个 <b style="color:var(--ink)">Personal Access Token</b>（只需勾 gist 权限），粘贴到下方，点「连接」会自动建一个 Gist 存放数据。</p>
+      <div class="flex gap-2 flex-wrap" style="align-items:center">
+        <input class="field" type="password" style="max-width:340px" id="ghTokenInput" placeholder="粘贴 GitHub Token（ghp_... 或 github_pat_...）">
+        <button class="pillbtn dark" onclick="gistConnect()">连接</button>
+        <button class="pillbtn" onclick="gistPull(true)">立即同步</button>
+        <button class="pillbtn" onclick="gistDisconnect()" style="color:#dc2626">断开</button>
+      </div>
+      <div class="flex gap-2 flex-wrap mt-3" style="align-items:center">
+        <input class="field" style="max-width:340px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）" readonly>
       </div>
       <p class="text-xs mt-3 font-black" id="syncStatus" style="color:var(--ink-2)"></p>
-      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">提示：同步码等于数据钥匙，请只发给你老婆，不要外传。</p>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：Token 仅存本机浏览器；数据写入你的 Gist。以后问我「8月有什么爆品」，把上方 Gist ID 发我即可。</p>
     </div>
     <div class="card p-6">
       <h3 class="font-black mb-3">📲 添加到主屏幕（像 App 一样用）</h3>
@@ -1117,7 +1120,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
 ================================================================ */
 const DB_KEY='zengsheng_workbench_v1';
 /* 同步状态变量：必须在使用它的 save() 之前声明，否则触发 TDZ ReferenceError 导致整页空白 */
-let syncCode=localStorage.getItem(DB_KEY+'_synccode')||'';
+let ghToken=localStorage.getItem(DB_KEY+'_ghtoken')||'';let gistId=localStorage.getItem(DB_KEY+'_gistid')||'';
 let syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
 const ACCOUNTS=[
   {id:'stone', name:'Stone石头姐', role:'主账号', shop:'石头姐的店', hue:'#e06ba4'},
@@ -2341,51 +2344,40 @@ function deltaTxt(cur,prev){const d=cur-prev;return d===0?'±0':d>0?'+'+d:''+d;}
 /* ================================================================
    多设备云同步（同步码机制：同码设备自动互通）
 ================================================================ */
-const SYNC_API='https://jsonblob.com/api/jsonBlob';
-/* 变量已在文件顶部声明（含 localStorage 读取），此处仅做运行期重置，避免重复声明 */
-syncCode=localStorage.getItem(DB_KEY+'_synccode')||'';
+const GH_API='https://api.github.com';
+const GIST_FILE='workbench-data.json';
+/* 变量（ghToken/gistId）已在文件顶部声明并读取 localStorage，此处仅重置计时器 */
 syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
 
 function syncSchedulePush(){
-  if(!syncCode)return;
+  if(!gistId)return;
   clearTimeout(syncPushTimer);
-  syncPushTimer=setTimeout(syncPush,1500);
+  syncPushTimer=setTimeout(gistPush,1500);
 }
-async function syncPush(){
-  if(!syncCode||syncBusy)return;
+async function gistPush(){
+  if(!ghToken||!gistId||syncBusy)return;
   syncBusy=true;
   try{
-    await fetch(SYNC_API+'/'+syncCode,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(DB)});
+    const r=await fetch(`${GH_API}/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+ghToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){/* 离线时静默失败，下次保存自动重试 */}
   syncBusy=false;
 }
-async function syncPull(manual){
-  if(!syncCode){if(manual)toast('请先连接同步码');return;}
+async function gistPull(manual){
+  if(!gistId){if(manual)toast('请先连接 GitHub 同步');return;}
   try{
-    const r=await fetch(SYNC_API+'/'+syncCode,{headers:{'Accept':'application/json'}});
-    if(!r.ok)throw new Error(r.status);
-    const remote=await r.json();
-    if(remote&&remote.tasks){
-      let changed=false;
-      // 局部合并飞书同步状态（云端 Worker 写回，不依赖整体 updatedAt 覆盖即可拿到）
-      if(remote.meta&&remote.meta.feishuStatus){
-        DB.meta=DB.meta||{};
-        const lf=DB.meta.feishuStatus, rf=remote.meta.feishuStatus;
-        const lts=lf&&lf.lastSync?Date.parse(lf.lastSync):0;
-        const rts=rf&&rf.lastSync?Date.parse(rf.lastSync):0;
-        if(rts>lts){DB.meta.feishuStatus=rf;changed=true;}
-      }
-      if((remote.meta?.updatedAt||0)>(DB.meta?.updatedAt||0)){
-        DB=remote;changed=true;
-        localStorage.setItem(DB_KEY,JSON.stringify(DB));
-        refreshCurrentView();
-        if(manual)toast('已拉取最新数据');
-      }else if(changed){
-        localStorage.setItem(DB_KEY,JSON.stringify(DB));
-        if(manual)toast('已更新飞书同步状态');
-      }else if(manual){toast('本地已是最新');}
-    }
+    const url=`${GH_API}/gists/${gistId}`+(ghToken?'?t='+Date.now():'');
+    const r=await fetch(url, ghToken?{headers:{'Authorization':'Bearer '+ghToken}}:{});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const fc=j.files&&j.files[GIST_FILE]?j.files[GIST_FILE].content:null;
+    if(!fc)return;
+    const remote=JSON.parse(fc);
+    if(remote&&(remote.meta?.updatedAt||0)>(DB.meta?.updatedAt||0)){
+      DB=remote;localStorage.setItem(DB_KEY,JSON.stringify(DB));refreshCurrentView();
+      if(manual)toast('已拉取最新数据');
+    }else if(manual){toast('本地已是最新');}
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){if(manual)toast('同步失败，请检查网络');}
 }
@@ -2398,50 +2390,45 @@ function refreshCurrentView(){
   if(v==='dashboard')renderDashboard();
   if(v==='accounts')renderAccounts();
 }
-async function syncConnect(){
-  const inp=document.getElementById('syncCodeInput');
-  let code=inp.value.trim();
-  toast('正在连接…');
+async function gistConnect(){
+  const inp=document.getElementById('ghTokenInput');
+  const tok=inp.value.trim();
+  if(!tok){toast('请先填写 GitHub Token（需 gist 权限）');return;}
+  ghToken=tok;localStorage.setItem(DB_KEY+'_ghtoken',tok);
+  toast('正在连接 GitHub…');
   try{
-    if(!code){
-      const r=await fetch(SYNC_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(DB)});
-      if(!r.ok)throw new Error(r.status);
-      const loc=r.headers.get('Location')||'';
-      code=loc.split('/').pop();
-      if(!code)throw new Error('no id');
-      inp.value=code;
+    if(!gistId){
+      const r=await fetch(`${GH_API}/gists`,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({public:true,files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const j=await r.json(); gistId=j.id;
+      localStorage.setItem(DB_KEY+'_gistid',gistId);
+      toast('☁️ 已创建云端同步');
     }else{
-      const r=await fetch(SYNC_API+'/'+code,{headers:{'Accept':'application/json'}});
-      if(!r.ok){toast('同步码不存在，请检查后重试');return;}
-      const remote=await r.json();
-      if(remote&&remote.tasks&&(remote.meta?.updatedAt||0)>(DB.meta?.updatedAt||0)){
-        DB=remote;localStorage.setItem(DB_KEY,JSON.stringify(DB));
-        refreshCurrentView();
-      }
+      await gistPull(true);
     }
-    syncCode=code;localStorage.setItem(DB_KEY+'_synccode',code);
-    syncLastAt=Date.now();startSyncLoop();renderSync();
-    toast('☁️ 已连接云端同步');
-  }catch(e){toast('连接失败，请检查网络后重试');}
+    startSyncLoop();renderSync();
+  }catch(e){toast('连接失败：'+((e&&e.message)||e)+'（Token 是否有 gist 权限？）');}
 }
-function syncDisconnect(){
-  syncCode='';localStorage.removeItem(DB_KEY+'_synccode');
+function gistDisconnect(){
+  gistId='';ghToken='';localStorage.removeItem(DB_KEY+'_gistid');localStorage.removeItem(DB_KEY+'_ghtoken');
   clearInterval(syncTimer);renderSync();
   toast('已断开云端同步（本机数据保留）');
 }
 function startSyncLoop(){
   clearInterval(syncTimer);
-  syncTimer=setInterval(()=>{if(!document.hidden)syncPull();},15000);
+  syncTimer=setInterval(()=>{if(!document.hidden)gistPull();},15000);
 }
 function renderSync(){
-  const inp=document.getElementById('syncCodeInput');
-  if(inp)inp.value=syncCode;
+  const inp=document.getElementById('ghTokenInput');
+  if(inp)inp.value=ghToken;
+  const gi=document.getElementById('gistIdInput');
+  if(gi)gi.value=gistId;
   renderSyncStatus();
 }
 function renderSyncStatus(){
   const el=document.getElementById('syncStatus');if(!el)return;
-  el.textContent=syncCode
-    ?`☁️ 已连接 · 同步码 ${syncCode} · 最后同步 ${syncLastAt?new Date(syncLastAt).toLocaleTimeString('zh-CN'):'—'}`
+  el.textContent=gistId
+    ?`☁️ 已连接 GitHub 同步 · Gist ${gistId} · 最后同步 ${syncLastAt?new Date(syncLastAt).toLocaleTimeString('zh-CN'):'—'}`
     :'未连接云端同步，数据仅保存在本机';
 }
 
@@ -2529,7 +2516,7 @@ function toggleFeishu(){
   toast(on?'已开启飞书同步（云端 Worker 下次运行约 1 分钟内生效）':'已关闭飞书同步');
 }
 async function refreshFeishuStatus(){
-  await syncPull(true);
+  await gistPull(true);
   renderFeishuStatus();
   toast('已刷新飞书同步状态');
 }
@@ -2566,7 +2553,7 @@ function startReminderLoop(){
 renderHeader();renderHome();
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
-if(syncCode){startSyncLoop();syncPull();}
+if(gistId){startSyncLoop();gistPull();}
 checkReminders();startReminderLoop();
 </script>
 <script>
