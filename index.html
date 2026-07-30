@@ -564,6 +564,17 @@ html[data-theme="dark"] .shop-select-item.selected{background:rgba(245,213,74,.2
 .issue-ctx-item:hover{background:var(--accent,#FFD66B)}
 .issue-ctx-item .k{font-size:11px;font-weight:700;opacity:.55}
 .issue-ctx-item.disabled{opacity:.4;cursor:not-allowed}
+/* ===== 爆品时间表 ===== */
+.baopin-tools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:0;flex-wrap:wrap}
+.baopin-table-scroll{overflow-x:auto;border-radius:var(--r-xl);border:1.5px solid var(--line);background:var(--card-bg);margin-top:14px}
+.baopin-table{border-collapse:collapse;width:100%;font-size:14px}
+.baopin-table th{background:var(--surface,#f2f2f4);text-align:left;padding:12px 14px;font-weight:700;color:var(--ink);border-bottom:1.5px solid var(--line);white-space:nowrap}
+.baopin-table td{padding:6px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.baopin-table tr:hover td{background:rgba(0,0,0,.03)}
+.col-month{width:96px;text-align:center;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.baopin-input{width:100%;min-width:0;border:1px solid transparent;background:transparent;padding:9px 10px;border-radius:var(--r-sm);font-size:14px;color:var(--ink);outline:none;font-family:inherit;cursor:text;resize:vertical;line-height:1.5}
+.baopin-input:focus{border-color:var(--accent,#FFD66B);background:#fff;box-shadow:0 0 0 3px rgba(255,214,107,.25)}
+.baopin-input::placeholder{color:#bbb}
 .issue-ctx-item.disabled:hover{background:transparent}
 .cell-thumb{max-width:46px;max-height:46px;border-radius:6px;display:block;margin-top:3px;border:1px solid var(--line)}
 .issue-empty{text-align:center;padding:48px 0;color:var(--ink-2);font-weight:700;font-size:14px}
@@ -737,6 +748,12 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           </div>
           <div class="flat-app-name">问题订单</div>
         </div>
+        <div class="flat-app" onclick="openApp('baopin')">
+          <div class="flat-app-ico" style="background:#FFD66B;color:#141414">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          </div>
+          <div class="flat-app-name">爆品时间表</div>
+        </div>
       </div>
     </div>
 
@@ -882,6 +899,18 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     </div>
     <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">点单元格直接编辑（自动保存）· 拖拽列头右缘可调整列宽 · 单击选格 / Shift+单击选区域 · Ctrl(⌘)+C/V/X 复制粘贴剪切 · 勾选左侧复选框后下方出现「确认删除」· 右上角可导出 Excel</p>
     <div id="issuesWrap"></div>
+  </section>
+
+  <!-- ============ 爆品时间表 ============ -->
+  <section id="view-baopin" class="view">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <h2 class="section-h flex-1">🔥 爆品时间表</h2>
+      <div class="baopin-tools">
+        <button class="btn-ghost" onclick="baopinExport()">⬇ 导出 Excel</button>
+      </div>
+    </div>
+    <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">在「爆品名称」列直接填写，自动保存并同步云端 · 一个月有多个爆品请换行分隔 · 之后问 WorkBuddy「X月有什么爆品」即可列举</p>
+    <div id="baopinWrap"></div>
   </section>
 
   <!-- ============ 多设备同步 ============ -->
@@ -1057,6 +1086,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dock-btn" data-nav="dashboard" title="数据看板">📈</button>
   <button class="dock-btn" data-nav="accounts" title="账号管理">👥</button>
   <button class="dock-btn" data-nav="issues" title="问题订单">🧾</button>
+  <button class="dock-btn" data-nav="baopin" title="爆品时间表">🔥</button>
 </nav>
 
 <!-- ============ WorkBuddy 右侧 50% 透明度悬浮弹窗 ============ -->
@@ -1141,6 +1171,8 @@ function seed(){
 }
 if(!DB||!DB.seeded)seed();
 if(!DB.issues)DB.issues=[];
+if(!DB.baopin)DB.baopin=defaultBaopin();
+function defaultBaopin(){return Array.from({length:12},(_,i)=>({month:i+1,items:''}));}
 /* 旧数据迁移：补齐看板字段 */
 DB.tasks.forEach((t,i)=>{
   if(!t.column)t.column=t.status==='done'?'done':'work';
@@ -1162,8 +1194,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1181,6 +1213,39 @@ function openApp(name){
   if(name==='accounts')renderAccounts();
   if(name==='sync')renderSync();
   if(name==='issues')renderIssues();
+  if(name==='baopin')renderBaopin();
+}
+/* ===================== 爆品时间表 ===================== */
+function renderBaopin(){
+  const wrap=document.getElementById('baopinWrap'); if(!wrap)return;
+  const rows=DB.baopin||[];
+  let html='<div class="baopin-table-scroll"><table class="baopin-table"><thead><tr><th class="col-month">月份</th><th>爆品名称</th></tr></thead><tbody>';
+  html+=rows.map((r,i)=>{
+    const m=r.month+'月';
+    return `<tr data-i="${i}"><td class="col-month">${m}</td>`
+      +`<td><textarea class="baopin-input" data-i="${i}" rows="${Math.max(2,(r.items||'').split('\n').length)}" placeholder="填写 ${m} 爆品，多个换行">${esc(r.items)}</textarea></td></tr>`;
+  }).join('');
+  html+='</tbody></table></div>';
+  wrap.innerHTML=html;
+  const tb=wrap.querySelector('tbody');
+  if(tb)tb.addEventListener('input',onBaopinInput);
+}
+function onBaopinInput(e){
+  const t=e.target; if(!t.classList.contains('baopin-input'))return;
+  const i=+t.dataset.i; if(!DB.baopin[i])return;
+  DB.baopin[i].items=t.value; save();
+}
+function baopinExport(){
+  const rows=DB.baopin||[];
+  let csv='月份,爆品名称\n';
+  rows.forEach(r=>{
+    const items=(r.items||'').split('\n').map(x=>x.trim()).filter(Boolean).join('、');
+    csv+=`${r.month}月,${items}\n`;
+  });
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='爆品时间表_'+todayStr()+'.csv'; a.click();
+  toast('已导出 CSV');
 }
 /* ===================== 问题订单 ===================== */
 const ISSUE_FIELDS=['客户名','卖出号','采购单号','物流单号','问题','怎么处理','商家回复状态','目前进度更新','客诉时间','客户问题截图'];
