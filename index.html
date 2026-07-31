@@ -926,8 +926,10 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
         <button class="pillbtn" onclick="gistDisconnect()" style="color:#dc2626">断开</button>
       </div>
       <div class="flex gap-2 flex-wrap mt-3" style="align-items:center">
-        <input class="field" style="max-width:340px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）" readonly>
+        <input class="field" style="max-width:300px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）">
+        <button class="pillbtn" onclick="copyGistId()">复制 ID</button>
       </div>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">📱💻 多设备共用同一份数据：把另一台设备的 Gist ID 填到上方输入框，点「连接」即可加入同一云端同步。</p>
       <p class="text-xs mt-3 font-black" id="syncStatus" style="color:var(--ink-2)"></p>
       <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：Token 仅存本机浏览器；数据写入你的 Gist。以后问我「8月有什么爆品」，把上方 Gist ID 发我即可。</p>
     </div>
@@ -2391,13 +2393,19 @@ function refreshCurrentView(){
   if(v==='accounts')renderAccounts();
 }
 async function gistConnect(){
-  const inp=document.getElementById('ghTokenInput');
-  const tok=inp.value.trim();
+  const tok=document.getElementById('ghTokenInput').value.trim();
+  const gidInp=(document.getElementById('gistIdInput').value||'').trim();
   if(!tok){toast('请先填写 GitHub Token（需 gist 权限）');return;}
   ghToken=tok;localStorage.setItem(DB_KEY+'_ghtoken',tok);
   toast('正在连接 GitHub…');
   try{
-    if(!gistId){
+    if(gidInp){
+      const r=await fetch(`${GH_API}/gists/${gidInp}`,{headers:{'Authorization':'Bearer '+tok}});
+      if(!r.ok)throw new Error('Gist 不存在或无权限 (HTTP '+r.status+')');
+      gistId=gidInp;localStorage.setItem(DB_KEY+'_gistid',gistId);
+      await gistPull(true);
+      toast('☁️ 已加入云端同步');
+    }else if(!gistId){
       const r=await fetch(`${GH_API}/gists`,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({public:true,files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
       if(!r.ok)throw new Error('HTTP '+r.status);
       const j=await r.json(); gistId=j.id;
@@ -2414,9 +2422,14 @@ function gistDisconnect(){
   clearInterval(syncTimer);renderSync();
   toast('已断开云端同步（本机数据保留）');
 }
+let visListenerBound=false;
 function startSyncLoop(){
   clearInterval(syncTimer);
   syncTimer=setInterval(()=>{if(!document.hidden)gistPull();},15000);
+  if(!visListenerBound){
+    visListenerBound=true;
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && gistId) gistPull(); });
+  }
 }
 function renderSync(){
   const inp=document.getElementById('ghTokenInput');
@@ -2424,6 +2437,12 @@ function renderSync(){
   const gi=document.getElementById('gistIdInput');
   if(gi)gi.value=gistId;
   renderSyncStatus();
+}
+function copyGistId(){
+  if(!gistId){toast('尚未连接，无 Gist ID 可复制');return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(gistId).then(()=>toast('已复制 Gist ID 📋'),()=>toast('复制失败，请手动长按选择'));
+  }else{toast('请手动长按输入框选择复制');}
 }
 function renderSyncStatus(){
   const el=document.getElementById('syncStatus');if(!el)return;
