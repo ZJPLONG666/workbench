@@ -1138,7 +1138,27 @@ function load(){
   try{const raw=localStorage.getItem(DB_KEY); if(raw) return JSON.parse(raw);}catch(e){}
   return null;
 }
-function save(){DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();localStorage.setItem(DB_KEY,JSON.stringify(DB));syncSchedulePush();}
+// 记录级时间戳：合并时按"单条记录"判定谁更新，避免用整库时间戳误判导致互覆写丢数据
+let _recSig=JSON.parse(localStorage.getItem(DB_KEY+'_recsig')||'{}'); // 跨刷新保留，确保只给"真正改动"的记录打新时间戳
+function stripUpdatedAt(o){const c=JSON.parse(JSON.stringify(o));delete c.updatedAt;return c;}
+function stampRecords(){
+  const now=Date.now();
+  const cols=['tasks','issues','notes','sales','products','baopin'];
+  const next={};
+  cols.forEach(col=>{
+    (DB[col]||[]).forEach(rec=>{
+      if(!rec||typeof rec!=='object')return;
+      const idk = rec.id!==undefined?rec.id : (rec.month!==undefined?rec.month : JSON.stringify(rec));
+      const key=col+':'+idk;
+      const sig=JSON.stringify(stripUpdatedAt(rec));
+      if(!rec.updatedAt || _recSig[key]!==sig) rec.updatedAt=now;
+      next[key]=sig;
+    });
+  });
+  _recSig=next;
+  try{localStorage.setItem(DB_KEY+'_recsig',JSON.stringify(next));}catch(e){}
+}
+function save(){DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();stampRecords();localStorage.setItem(DB_KEY,JSON.stringify(DB));syncSchedulePush();}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function todayStr(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
@@ -2126,6 +2146,7 @@ function importData(e){
       DB=normalizeDB(d);DB.seeded=true;save();
       renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
       toast('导入成功，已恢复全部数据 ✅ 任务 '+DB.tasks.length+' 条 · 爆品 '+DB.baopin.filter(x=>x.items&&x.items.trim()).length+' 月 · 订单 '+DB.issues.length+' 条');
+      if(gistId&&ghToken)gistPush(false); // 恢复后立即将正确数据推上云端（以导入文件为准，不预合并）
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
@@ -2353,29 +2374,72 @@ function syncSchedulePush(){
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(gistPush,1500);
 }
-async function gistPush(){
+async function gistPush(merge=true){
   if(!ghToken||!gistId||syncBusy)return;
   syncBusy=true;
   try{
+    // 推送前先合并云端，避免覆盖另一端的最新改动（解决双向不同步 / 互覆写丢数据）
+    if(merge){ try{ await gistPull(false); }catch(e){} }
     const r=await fetch(`${GH_API}/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+ghToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
     if(!r.ok)throw new Error('HTTP '+r.status);
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){/* 离线时静默失败，下次保存自动重试 */}
   syncBusy=false;
 }
+// 双向安全合并：按主键 union，同一记录按各自 updatedAt 取较新一侧；不再整库覆盖（杜绝互覆写丢数据）
+function mergeDB(local, remote){
+  const out=JSON.parse(JSON.stringify(local));
+  const locT=local.meta?.updatedAt||0, remT=remote.meta?.updatedAt||0;
+  out.meta=Object.assign({}, local.meta||{}, remote.meta||{}); // 云端写入的字段(如飞书状态)优先
+  out.meta.updatedAt=Math.max(locT, remT);
+  // 按 id 合并的集合：同一 id 取 updatedAt 较新者
+  ['tasks','issues','notes','sales'].forEach(k=>{
+    const rm=remote[k]||[], lm=local[k]||[];
+    const map=new Map(lm.map(x=>[x.id,x]));
+    rm.forEach(x=>{
+      if(map.has(x.id)){ const lr=map.get(x.id); map.set(x.id,(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); }
+      else map.set(x.id,x);
+    });
+    out[k]=[...map.values()];
+  });
+  // products 按 shop+name 合并
+  (()=>{ const k='products'; const rm=remote[k]||[], lm=local[k]||[];
+    const key=x=>(x.shop||'')+'|'+(x.name||'');
+    const map=new Map(lm.map(x=>[key(x),x]));
+    rm.forEach(x=>{ if(map.has(key(x))){ const lr=map.get(key(x)); map.set(key(x),(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); } else map.set(key(x),x); });
+    out[k]=[...map.values()];
+  })();
+  // baopin 按 month 合并
+  (()=>{ const k='baopin'; const rm=remote[k]||[], lm=local[k]||[];
+    const map=new Map(lm.map(x=>[x.month,x]));
+    rm.forEach(x=>{ if(map.has(x.month)){ const lr=map.get(x.month); map.set(x.month,(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); } else map.set(x.month,x); });
+    out[k]=[...map.values()];
+  })();
+  // accounts/shops 等无主键集合：保留本地，补回云端独有项
+  ['accounts','shops'].forEach(k=>{
+    const rm=remote[k]||[], lm=local[k]||[];
+    const seen=new Set(lm.map(x=>JSON.stringify(x))); const arr=[...lm];
+    rm.forEach(x=>{ const s=JSON.stringify(x); if(!seen.has(s)){ seen.add(s); arr.push(x); } });
+    out[k]=arr;
+  });
+  return out;
+}
 async function gistPull(manual){
   if(!gistId){if(manual)toast('请先连接 GitHub 同步');return;}
   try{
-    const url=`${GH_API}/gists/${gistId}`+(ghToken?'?t='+Date.now():'');
-    const r=await fetch(url, ghToken?{headers:{'Authorization':'Bearer '+ghToken}}:{});
+    const url=`${GH_API}/gists/${gistId}`+'?_='+Date.now();
+    const r=await fetch(url, ghToken?{headers:{'Authorization':'Bearer '+ghToken},cache:'no-store'}:{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     const fc=j.files&&j.files[GIST_FILE]?j.files[GIST_FILE].content:null;
     if(!fc)return;
     const remote=JSON.parse(fc);
-    if(remote&&(remote.meta?.updatedAt||0)>(DB.meta?.updatedAt||0)){
-      DB=remote;localStorage.setItem(DB_KEY,JSON.stringify(DB));refreshCurrentView();
-      if(manual)toast('已拉取最新数据');
+    const before=JSON.stringify(DB);
+    const merged=mergeDB(DB, remote);
+    const after=JSON.stringify(merged);
+    if(after!==before){
+      DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); refreshCurrentView(); syncSchedulePush();
+      if(manual)toast('已同步最新数据');
     }else if(manual){toast('本地已是最新');}
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){if(manual)toast('同步失败，请检查网络');}
@@ -2422,10 +2486,14 @@ function gistDisconnect(){
 let visListenerBound=false;
 function startSyncLoop(){
   clearInterval(syncTimer);
-  syncTimer=setInterval(()=>{if(!document.hidden)gistPull();},15000);
+  // 每 8 秒轮询（前台）；切回/聚焦/恢复/联网时立即拉取，保证另一端编辑即时可见
+  syncTimer=setInterval(()=>{if(!document.hidden)gistPull();},8000);
   if(!visListenerBound){
     visListenerBound=true;
     document.addEventListener('visibilitychange',()=>{ if(!document.hidden && gistId) gistPull(); });
+    window.addEventListener('focus',()=>{ if(gistId) gistPull(); });
+    window.addEventListener('online',()=>{ if(gistId){ gistPull(); gistPush(); } });
+    window.addEventListener('pageshow',()=>{ if(gistId) gistPull(); }); // iOS 主屏 PWA 重新回到前台
   }
 }
 function renderSync(){
@@ -2569,7 +2637,7 @@ function startReminderLoop(){
 renderHeader();renderHome();
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
-if(gistId){startSyncLoop();gistPull();}
+if(gistId){stampRecords();startSyncLoop();gistPull();}
 checkReminders();startReminderLoop();
 </script>
 <script>
