@@ -922,9 +922,11 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="flex gap-2 flex-wrap" style="align-items:center">
         <input class="field" type="password" style="max-width:340px" id="ghTokenInput" placeholder="粘贴 GitHub Token（ghp_... 或 github_pat_...）">
         <button class="pillbtn dark" onclick="gistConnect()">连接</button>
-        <button class="pillbtn" onclick="gistPull(true)">立即同步</button>
+        <button class="pillbtn" onclick="gistPush(true)" style="color:#0a7d34">⬆ 上传本地到云端</button>
+        <button class="pillbtn" onclick="gistPull(true)" style="color:#1d4ed8">⬇ 从云端恢复</button>
         <button class="pillbtn" onclick="gistDisconnect()" style="color:#dc2626">断开</button>
       </div>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">⚠️ <b style="color:var(--ink)">上传本地到云端</b>＝用本机数据覆盖云端（本机为准）；<b style="color:var(--ink)">从云端恢复</b>＝用云端数据覆盖本机（云端为准）。两者都会整份替换，操作前请确认哪边数据更新。</p>
       <div class="flex gap-2 flex-wrap mt-3" style="align-items:center">
         <input class="field" style="max-width:300px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）">
         <button class="pillbtn" onclick="copyGistId()">复制 ID</button>
@@ -2356,14 +2358,17 @@ function syncSchedulePush(){
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(gistPush,1500);
 }
-async function gistPush(){
-  if(!ghToken||!gistId||syncBusy)return;
+async function gistPush(manual){
+  if(!ghToken||!gistId){if(manual)toast('请先填写 Token 并连接');return;}
+  if(syncBusy)return;
   syncBusy=true;
   try{
+    DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();
     const r=await fetch(`${GH_API}/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+ghToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
     if(!r.ok)throw new Error('HTTP '+r.status);
     syncLastAt=Date.now();renderSyncStatus();
-  }catch(e){/* 离线时静默失败，下次保存自动重试 */}
+    if(manual)toast('⬆ 已上传本机数据到云端');
+  }catch(e){if(manual)toast('上传失败：'+(e.message||e)+'（请检查网络/Tokens）');}
   syncBusy=false;
 }
 async function gistPull(manual){
@@ -2409,8 +2414,7 @@ async function gistConnect(){
       const r=await fetch(`${GH_API}/gists/${gidInp}`,{headers:{'Authorization':'Bearer '+tok}});
       if(!r.ok)throw new Error('Gist 不存在或无权限 (HTTP '+r.status+')');
       gistId=gidInp;localStorage.setItem(DB_KEY+'_gistid',gistId);
-      await gistPull(true);
-      toast('☁️ 已加入云端同步');
+      await gistMerge(true);
     }else if(!gistId){
       const r=await fetch(`${GH_API}/gists`,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({public:true,files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
       if(!r.ok)throw new Error('HTTP '+r.status);
@@ -2418,10 +2422,31 @@ async function gistConnect(){
       localStorage.setItem(DB_KEY+'_gistid',gistId);
       toast('☁️ 已创建云端同步');
     }else{
-      await gistPull(true);
+      await gistMerge(true);
     }
     startSyncLoop();renderSync();
   }catch(e){toast('连接失败：'+((e&&e.message)||e)+'（Token 是否有 gist 权限？）');}
+}
+// 安全合并：比对时间戳，云端新则拉取、本地新则上传，绝不无脑覆盖
+async function gistMerge(manual){
+  if(!gistId){if(manual)toast('请先连接 GitHub 同步');return;}
+  try{
+    const r=await fetch(`${GH_API}/gists/${gistId}`+(ghToken?'?t='+Date.now():''),ghToken?{headers:{'Authorization':'Bearer '+ghToken}}:{});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const fc=j.files&&j.files[GIST_FILE]?j.files[GIST_FILE].content:null;
+    const remote=fc?JSON.parse(fc):null;
+    const remoteAt=remote&&remote.meta?remote.meta.updatedAt||0:0;
+    const localAt=DB.meta?DB.meta.updatedAt||0:0;
+    if(remote&&remoteAt>localAt){
+      DB=remote;localStorage.setItem(DB_KEY,JSON.stringify(DB));refreshCurrentView();
+      if(manual)toast('☁️ 已拉取云端最新数据（云端为准）');
+    }else{
+      await gistPush(true);
+      if(manual)toast('☁️ 已用本机数据更新云端（本机为准）');
+    }
+    syncLastAt=Date.now();renderSyncStatus();
+  }catch(e){if(manual)toast('同步失败：'+(e.message||e));}
 }
 function gistDisconnect(){
   gistId='';ghToken='';localStorage.removeItem(DB_KEY+'_gistid');localStorage.removeItem(DB_KEY+'_ghtoken');
