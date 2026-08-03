@@ -2122,26 +2122,24 @@ function importData(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=()=>{try{const raw=JSON.parse(r.result);
-    // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 旧版看板裸数据
+    // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 直接导出的整库对象
     const d=(raw&&raw.__wb_backup__&&raw.db)?raw.db:raw;
-    if(d&&d.tasks&&d.sales&&d.notes){
-      DB=normalizeDB(d);DB.seeded=true;save();
-      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();
+    if(d&&typeof d==='object'&&!Array.isArray(d)){
+      DB=normalizeDB(d);save();
+      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
       toast('导入成功，已恢复全部数据');
+      if(gistId&&ghToken)gistPush(true); // 若已连同步，立即把导入的数据推上云端
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
 }
-// 字段兜底，防止旧备份缺字段导致报错
+// 字段兜底：以导入数据为准全字段覆盖，绝不丢弃任何已有字段（含 baopin/issues 等）
 function normalizeDB(d){
-  return {
-    meta:d.meta||{},
-    tasks:d.tasks||[],sales:d.sales||[],notes:d.notes||[],
-    accounts:d.accounts||DB.accounts,
-    products:d.products||DB.products,
-    shops:d.shops||DB.shops,
-    seeded:true
-  };
+  const known={meta:{},tasks:[],sales:[],notes:[],accounts:[],products:[],shops:[],baopin:[],issues:[]};
+  const out=Object.assign({},known,DB,d); // DB 兜底，导入 d 优先生效
+  out.seeded=true;
+  out.meta=(d&&d.meta)?d.meta:(DB&&DB.meta?DB.meta:{});
+  return out;
 }
 // 下载当前工作台 HTML 作为离线副本（断网也能用）
 async function downloadOfflineCopy(){
