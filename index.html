@@ -1195,7 +1195,7 @@ save();
 /* ================================================================
    通用工具
 ================================================================ */
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);}
+function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),ms||1800);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 /* ================================================================
@@ -2125,9 +2125,13 @@ function importData(e){
     // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 直接导出的整库对象
     const d=(raw&&raw.__wb_backup__&&raw.db)?raw.db:raw;
     if(d&&typeof d==='object'&&!Array.isArray(d)){
+      const before={tasks:DB.tasks.length,baopin:DB.baopin.length};
       DB=normalizeDB(d);save();
+      const tasks=DB.tasks.length, baopin=(DB.baopin||[]).filter(x=>x.items&&x.items.trim()).length, issues=(DB.issues||[]).length;
       renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
-      toast('导入成功，已恢复全部数据');
+      let msg=`导入成功 ✅ 任务 ${tasks} 条 · 看板 ${tasks} 条 · 爆品 ${baopin} 月 · 订单 ${issues} 条`;
+      if(tasks===0) msg+='　⚠️ 该备份未包含任何任务，请确认导出的是手机端最新数据（而非空库/旧版本）';
+      toast(msg, 6000);
       if(gistId&&ghToken)gistPush(true); // 若已连同步，立即把导入的数据推上云端
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
