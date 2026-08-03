@@ -2399,6 +2399,12 @@ async function gistConnect(){
   ghToken=tok;localStorage.setItem(DB_KEY+'_ghtoken',tok);
   toast('正在连接 GitHub…');
   try{
+    // 连接前先校验 Token 有效性 + 读取 scope，给出精确诊断
+    const vr=await fetch(`${GH_API}/user`,{headers:{'Authorization':'Bearer '+tok}});
+    if(vr.status===401) throw new Error('Token 无效或已过期（请去 GitHub 重新生成）');
+    if(!vr.ok) throw new Error('GitHub 校验失败 (HTTP '+vr.status+')');
+    const scopes=(vr.headers.get('X-OAuth-Scopes')||vr.headers.get('x-oauth-scopes')||'').split(',').map(s=>s.trim().toLowerCase());
+    if(!scopes.includes('gist')) throw new Error('Token 缺少 gist 权限（去 GitHub 重新生成时务必勾选 gist）');
     if(gidInp){
       const r=await fetch(`${GH_API}/gists/${gidInp}`,{headers:{'Authorization':'Bearer '+tok}});
       if(!r.ok)throw new Error('Gist 不存在或无权限 (HTTP '+r.status+')');
