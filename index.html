@@ -480,8 +480,12 @@ html[data-theme="dark"] .dock-wb{border-color:rgba(255,255,255,.55)}
 .view{display:none;animation:viewin .35s cubic-bezier(.16,1,.3,1)}
 .view.active{display:block}
 .hidden{display:none !important}
-#taskModal{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:70;background:rgba(20,20,20,.4);backdrop-filter:blur(6px)}
-#taskModal.hidden{display:none !important}
+#taskModal,#importPreviewModal{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:70;background:rgba(20,20,20,.4);backdrop-filter:blur(6px)}
+#taskModal.hidden,#importPreviewModal.hidden{display:none !important}
+.import-stat{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--surface-border);margin-bottom:8px}
+.import-stat b{font-size:18px;color:var(--ink)}
+.import-stat .zero{color:var(--ink-2);opacity:.45}
+.import-stat .warn{color:#dc2626;font-size:11px;margin-left:auto;padding-left:8px}
 @keyframes viewin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-thumb{background:var(--hairline);border-radius:var(--r-pill)}
@@ -961,7 +965,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
         <button class="pillbtn" onclick="exportData()">💾 导出整库备份</button>
         <button class="pillbtn" onclick="document.getElementById('importFile').click()">📂 导入备份</button>
       </div>
-      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，先导入备份再连同步码。</p>
+      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，先导入备份再连同步码。<br>💡 导入时会先弹预览窗：若手机端缺少爆品/订单而电脑端有，选「合并导入」即可保留电脑数据；想让手机完全覆盖电脑则选「覆盖导入」。</p>
     </div>
   </section>
 </main>
@@ -1043,6 +1047,21 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div class="flex gap-2 mt-5">
       <button class="pillbtn flex-1 justify-center" onclick="closeReminderSettings()">关闭</button>
       <button class="pillbtn dark flex-1 justify-center" onclick="saveReminderSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 导入预览弹窗 ============ -->
+<div id="importPreviewModal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4" style="background:rgba(20,20,20,.4);backdrop-filter:blur(6px)">
+  <div class="card p-6 w-full max-w-[420px]">
+    <h3 class="font-black text-lg mb-2">📂 导入预览</h3>
+    <p class="text-xs font-bold mb-4" style="color:var(--ink-2)">确认这份备份里有什么数据，再决定是<b>合并</b>还是<b>覆盖</b>当前工作台。</p>
+    <div id="importPreviewList" class="mb-4" style="max-height:260px;overflow:auto"></div>
+    <div id="importPreviewWarn" class="hidden p-3 rounded-xl mb-4 text-xs font-bold" style="background:#fff4f4;border:1.5px solid #f3c2c2;color:#7f1d1d"></div>
+    <div class="flex gap-2">
+      <button class="pillbtn flex-1 justify-center" onclick="closeImportPreview()">取消</button>
+      <button class="pillbtn dark flex-1 justify-center" onclick="applyImport('merge')">➕ 合并导入</button>
+      <button class="pillbtn dark flex-1 justify-center" onclick="applyImport('replace')" style="background:var(--pink)">🔄 覆盖导入</button>
     </div>
   </div>
 </div>
@@ -2118,6 +2137,7 @@ function exportData(){
   a.download='STONE-STUDIO_全量备份_'+todayStr()+'.json';a.click();
   toast('全量备份文件已下载');
 }
+let pendingImport=null; // 暂存待导入的数据
 function importData(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
@@ -2125,17 +2145,105 @@ function importData(e){
     // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 直接导出的整库对象
     const d=(raw&&raw.__wb_backup__&&raw.db)?raw.db:raw;
     if(d&&typeof d==='object'&&!Array.isArray(d)){
-      const before={tasks:DB.tasks.length,baopin:DB.baopin.length};
-      DB=normalizeDB(d);save();
-      const tasks=DB.tasks.length, baopin=(DB.baopin||[]).filter(x=>x.items&&x.items.trim()).length, issues=(DB.issues||[]).length;
-      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
-      let msg=`导入成功 ✅ 任务 ${tasks} 条 · 看板 ${tasks} 条 · 爆品 ${baopin} 月 · 订单 ${issues} 条`;
-      if(tasks===0) msg+='　⚠️ 该备份未包含任何任务，请确认导出的是手机端最新数据（而非空库/旧版本）';
-      toast(msg, 6000);
-      if(gistId&&ghToken)gistPush(true); // 若已连同步，立即把导入的数据推上云端
+      pendingImport=d;
+      showImportPreview(d);
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
+}
+function showImportPreview(d){
+  const list=document.getElementById('importPreviewList');
+  const warn=document.getElementById('importPreviewWarn');
+  const counts=[
+    {key:'tasks',label:'任务 / 看板', arr:d.tasks||[]},
+    {key:'sales',label:'销售记录', arr:d.sales||[]},
+    {key:'notes',label:'笔记数据', arr:d.notes||[]},
+    {key:'accounts',label:'账号信息', arr:d.accounts||[]},
+    {key:'products',label:'商品库', arr:d.products||[]},
+    {key:'issues',label:'问题订单', arr:d.issues||[]},
+    {key:'baopin',label:'爆品月份', arr:(d.baopin||[]).filter(x=>x.items&&x.items.trim())},
+  ];
+  list.innerHTML=counts.map(c=>{
+    const cls=c.arr.length===0?'zero':'';
+    const warn=c.key==='tasks'&&c.arr.length===0?'<span class="warn">空库警告</span>':'';
+    return `<div class="import-stat"><span>${c.label}</span><b class="${cls}">${c.arr.length} ${c.key==='baopin'?'月':'条'}${warn}</b></div>`;
+  }).join('');
+  const hasTasks=!!(d.tasks&&d.tasks.length);
+  const hasBaopin=!!(d.baopin&&d.baopin.some(x=>x.items&&x.items.trim()));
+  const hasIssues=!!(d.issues&&d.issues.length);
+  if(!hasTasks&&!hasBaopin&&!hasIssues){
+    warn.classList.remove('hidden');warn.textContent='⚠️ 这份备份看起来是空库（没有任务、爆品、订单）。如果你是从手机导出，可能是手机端尚未保存数据，或导出的是旧版本。建议先在手机端确认数据存在后再导出。';
+  }else if(!hasBaopin&&!hasIssues){
+    warn.classList.remove('hidden');warn.textContent='提示：这份备份包含任务数据，但没有爆品/订单数据。若电脑端已有爆品/订单，建议选「合并导入」以保留电脑数据；若想让手机完全覆盖电脑，则选「覆盖导入」。';
+  }else{
+    warn.classList.add('hidden');warn.textContent='';
+  }
+  const m=document.getElementById('importPreviewModal');m.classList.remove('hidden');m.classList.add('flex');
+}
+function closeImportPreview(){const m=document.getElementById('importPreviewModal');m.classList.add('hidden');m.classList.remove('flex');pendingImport=null;}
+function applyImport(mode){
+  if(!pendingImport)return;
+  const d=pendingImport;
+  let result;
+  if(mode==='merge'){
+    result=mergeDB(DB,d);
+    toast('合并导入完成 ✅ '+importSummary(result),6000);
+  }else{
+    result=normalizeDB(d);
+    toast('覆盖导入完成 ✅ '+importSummary(result),6000);
+  }
+  DB=result;save();
+  renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
+  closeImportPreview();
+  if(gistId&&ghToken)gistPush(true); // 若已连同步，立即把导入的数据推上云端
+}
+function importSummary(db){
+  const t=(db.tasks||[]).length;
+  const b=(db.baopin||[]).filter(x=>x.items&&x.items.trim()).length;
+  const i=(db.issues||[]).length;
+  const s=(db.sales||[]).length;
+  const n=(db.notes||[]).length;
+  return `任务 ${t} 条 · 爆品 ${b} 月 · 订单 ${i} 条 · 销售 ${s} 条 · 笔记 ${n} 条`;
+}
+// 合并导入：按 ID/月份去重，保留两边数据，避免手机空字段把电脑已有数据抹掉
+function mergeDB(base,src){
+  const known={meta:{},tasks:[],sales:[],notes:[],accounts:[],products:[],shops:[],baopin:[],issues:[]};
+  const out=Object.assign({},known,base);
+  const mergeArr=(field,keyFn)=>{
+    const map=new Map();
+    (base[field]||[]).forEach(x=>map.set(keyFn(x),x));
+    (src[field]||[]).forEach(x=>{
+      const k=keyFn(x);
+      if(!map.has(k))map.set(k,x); // 新增
+      else if((x.updatedAt||0)>(map.get(k).updatedAt||0))map.set(k,x); // 以更新时间更新
+    });
+    out[field]=Array.from(map.values());
+  };
+  mergeArr('tasks',x=>x.id);
+  mergeArr('sales',x=>x.id);
+  mergeArr('notes',x=>x.id);
+  mergeArr('accounts',x=>x.id||x.name);
+  mergeArr('products',x=>x.id||(x.shop+'|'+x.name));
+  mergeArr('issues',x=>x.id);
+  // 爆品按月份合并：若 src 某月有内容则优先生效；若两边都有则换行合并
+  const bpMap=new Map();
+  (base.baopin||[]).forEach(x=>bpMap.set(x.month,x));
+  (src.baopin||[]).forEach(x=>{
+    const cur=bpMap.get(x.month);
+    if(!cur){bpMap.set(x.month,x);return;}
+    const srcItems=(x.items||'').trim();
+    const curItems=(cur.items||'').trim();
+    if(srcItems){
+      bpMap.set(x.month,{...cur,items:curItems?[curItems,srcItems].join('\n'):srcItems});
+    }
+  });
+  out.baopin=Array.from({length:12},(_,i)=>bpMap.get(i+1)||{month:i+1,items:''});
+  // shops 简单去重合并
+  const shopSet=new Set([...(base.shops||[]),...(src.shops||[])]);
+  out.shops=Array.from(shopSet);
+  out.seeded=true;
+  out.meta=Object.assign({},base.meta||{},src.meta||{},{updatedAt:Date.now()});
+  return out;
 }
 // 字段兜底：以导入数据为准全字段覆盖，绝不丢弃任何已有字段（含 baopin/issues 等）
 function normalizeDB(d){
@@ -2605,6 +2713,7 @@ function startReminderLoop(){
 renderHeader();renderHome();
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
+document.getElementById('importPreviewModal').addEventListener('click',e=>{if(e.target.id==='importPreviewModal')closeImportPreview();});
 if(gistId){startSyncLoop();gistPull();}
 checkReminders();startReminderLoop();
 </script>
