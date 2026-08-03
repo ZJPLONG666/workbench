@@ -1134,6 +1134,7 @@ const ACCOUNTS=[
 const SHOPS=['石头姐的店','益力多的店'];
 
 let DB=load();
+if(DB && !Array.isArray(DB.deleted)) DB.deleted=[]; // 旧库兜底：确保墓碑字段存在，支撑删除跨端同步
 function load(){
   try{const raw=localStorage.getItem(DB_KEY); if(raw) return JSON.parse(raw);}catch(e){}
   return null;
@@ -1159,6 +1160,14 @@ function stampRecords(){
   try{localStorage.setItem(DB_KEY+'_recsig',JSON.stringify(next));}catch(e){}
 }
 function save(){DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();stampRecords();localStorage.setItem(DB_KEY,JSON.stringify(DB));syncSchedulePush();}
+// 删除墓碑：删除记录时记下"集合:主键"，合并时两侧都剔除该记录，使删除可跨端生效且不再复活
+function recKey(col,rec){
+  if(col==='products') return (rec.shop||'')+'|'+(rec.name||'');
+  if(col==='baopin') return rec.month;
+  return rec.id;
+}
+function addTomb(col,key){ DB.deleted=DB.deleted||[]; const t=col+':'+key; if(!DB.deleted.includes(t))DB.deleted.push(t); }
+function applyTomb(col,arr,delSet){ return (arr||[]).filter(x=> !delSet.has(col+':'+recKey(col,x))); }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function todayStr(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
@@ -1167,7 +1176,7 @@ function seed(){
   DB={tasks:[],sales:[],notes:[],issues:[],products:[
     {shop:'石头姐的店',name:'便携榨汁杯'},{shop:'石头姐的店',name:'ins风收纳盒'},{shop:'石头姐的店',name:'懒人抹布'},
     {shop:'益力多的店',name:'草莓熊玩偶'},{shop:'益力多的店',name:'可爱发夹套装'},{shop:'益力多的店',name:'少女心水杯'},
-  ],seeded:true,meta:{updatedAt:Date.now()}};
+  ],seeded:true,deleted:[],meta:{updatedAt:Date.now()}};
   const today=new Date();
   for(let i=29;i>=0;i--){
     const d=new Date(today);d.setDate(d.getDate()-i);const ds=todayStr(d);
@@ -1413,6 +1422,7 @@ function issueAdd(){
 function issueDelete(){
   const ids=[...document.querySelectorAll('.issue-row-check:checked')].map(c=>c.value);
   if(!ids.length)return;
+  ids.forEach(id=>addTomb('issues',id));
   DB.issues=DB.issues.filter(r=>!ids.includes(r.id));
   save();renderIssues();
   toast('已删除 '+ids.length+' 行');
@@ -1771,6 +1781,7 @@ function kbUpdateSelBar(){
 function kbClearSelection(){kbSelected.clear();renderKanban();}
 function kbDeleteSelected(){
   if(!kbSelected.size)return;
+  kbSelected.forEach(id=>addTomb('tasks',id));
   DB.tasks=DB.tasks.filter(t=>!kbSelected.has(t.id));
   kbSelected.clear();save();renderKanban();renderCalendar();renderDayTasks();renderHome();
   toast('已删除所选任务');
@@ -1899,6 +1910,7 @@ function saveTask(){
 function deleteTask(){
   const id=document.getElementById('taskId').value;
   DB.tasks=DB.tasks.filter(x=>x.id!==id);
+  addTomb('tasks',id);
   save();closeTaskModal();renderKanban();renderCalendar();renderDayTasks();renderHome();toast('已删除');
 }
 
@@ -2127,7 +2139,7 @@ function renderSalesTable(){
     rows.map(r=>`<tr><td>${r.date}</td><td class="flex items-center gap-2">${shopAvatar(r.shop,20)}${esc(r.shop)}</td><td>${esc(r.product)}</td><td>${r.qty}</td><td>¥${r.revenue.toFixed(2)}</td>
       <td><button class="text-xs font-bold" style="color:#dc2626" onclick="delSale('${r.id}')">删除</button></td></tr>`).join('');
 }
-function delSale(id){DB.sales=DB.sales.filter(x=>x.id!==id);save();renderDashboard();toast('已删除');}
+function delSale(id){DB.sales=DB.sales.filter(x=>x.id!==id);addTomb('sales',id);save();renderDashboard();toast('已删除');}
 function exportData(){
   // 全量导出整个工作台（任务/日历/销售/笔记/账号/同步码/设置）
   const backup={__wb_backup__:true,version:1,exportedAt:Date.now(),db:DB};
@@ -2157,6 +2169,7 @@ function normalizeDB(d){
   const out=Object.assign({},known,DB,d); // DB 兜底，导入 d 优先生效
   out.seeded=true;
   out.meta=(d&&d.meta)?d.meta:(DB&&DB.meta?DB.meta:{});
+  out.deleted=[...new Set([...(DB.deleted||[]), ...((d&&d.deleted)||[])])]; // 导入不丢本地已删除标记
   return out;
 }
 // 下载当前工作台 HTML 作为离线副本（断网也能用）
@@ -2392,7 +2405,9 @@ function mergeDB(local, remote){
   const locT=local.meta?.updatedAt||0, remT=remote.meta?.updatedAt||0;
   out.meta=Object.assign({}, local.meta||{}, remote.meta||{}); // 云端写入的字段(如飞书状态)优先
   out.meta.updatedAt=Math.max(locT, remT);
-  // 按 id 合并的集合：同一 id 取 updatedAt 较新者
+  // 合并两侧墓碑：被标记为删除的记录，在任何一侧都不应再出现
+  const delSet=new Set([...(local.deleted||[]), ...(remote.deleted||[])]);
+  // 按 id 合并的集合：同一记录按 updatedAt 取较新一侧，再剔除墓碑
   ['tasks','issues','notes','sales'].forEach(k=>{
     const rm=remote[k]||[], lm=local[k]||[];
     const map=new Map(lm.map(x=>[x.id,x]));
@@ -2400,21 +2415,16 @@ function mergeDB(local, remote){
       if(map.has(x.id)){ const lr=map.get(x.id); map.set(x.id,(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); }
       else map.set(x.id,x);
     });
-    out[k]=[...map.values()];
+    out[k]=applyTomb(k,[...map.values()],delSet);
   });
-  // products 按 shop+name 合并
-  (()=>{ const k='products'; const rm=remote[k]||[], lm=local[k]||[];
-    const key=x=>(x.shop||'')+'|'+(x.name||'');
-    const map=new Map(lm.map(x=>[key(x),x]));
-    rm.forEach(x=>{ if(map.has(key(x))){ const lr=map.get(key(x)); map.set(key(x),(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); } else map.set(key(x),x); });
-    out[k]=[...map.values()];
-  })();
-  // baopin 按 month 合并
-  (()=>{ const k='baopin'; const rm=remote[k]||[], lm=local[k]||[];
-    const map=new Map(lm.map(x=>[x.month,x]));
-    rm.forEach(x=>{ if(map.has(x.month)){ const lr=map.get(x.month); map.set(x.month,(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); } else map.set(x.month,x); });
-    out[k]=[...map.values()];
-  })();
+  // products 按 shop+name、baopin 按 month 合并，同样剔除墓碑
+  ['products','baopin'].forEach(k=>{
+    const rm=remote[k]||[], lm=local[k]||[];
+    const keyOf=x=>recKey(k,x);
+    const map=new Map(lm.map(x=>[keyOf(x),x]));
+    rm.forEach(x=>{ if(map.has(keyOf(x))){ const lr=map.get(keyOf(x)); map.set(keyOf(x),(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); } else map.set(keyOf(x),x); });
+    out[k]=applyTomb(k,[...map.values()],delSet);
+  });
   // accounts/shops 等无主键集合：保留本地，补回云端独有项
   ['accounts','shops'].forEach(k=>{
     const rm=remote[k]||[], lm=local[k]||[];
@@ -2422,6 +2432,7 @@ function mergeDB(local, remote){
     rm.forEach(x=>{ const s=JSON.stringify(x); if(!seen.has(s)){ seen.add(s); arr.push(x); } });
     out[k]=arr;
   });
+  out.deleted=[...delSet]; // 墓碑随合并累积，确保删除跨端永久生效
   return out;
 }
 async function gistPull(manual){
