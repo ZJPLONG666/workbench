@@ -480,12 +480,8 @@ html[data-theme="dark"] .dock-wb{border-color:rgba(255,255,255,.55)}
 .view{display:none;animation:viewin .35s cubic-bezier(.16,1,.3,1)}
 .view.active{display:block}
 .hidden{display:none !important}
-#taskModal,#importPreviewModal{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:70;background:rgba(20,20,20,.4);backdrop-filter:blur(6px)}
-#taskModal.hidden,#importPreviewModal.hidden{display:none !important}
-.import-stat{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--surface-border);margin-bottom:8px}
-.import-stat b{font-size:18px;color:var(--ink)}
-.import-stat .zero{color:var(--ink-2);opacity:.45}
-.import-stat .warn{color:#dc2626;font-size:11px;margin-left:auto;padding-left:8px}
+#taskModal{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:70;background:rgba(20,20,20,.4);backdrop-filter:blur(6px)}
+#taskModal.hidden{display:none !important}
 @keyframes viewin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-thumb{background:var(--hairline);border-radius:var(--r-pill)}
@@ -926,11 +922,9 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="flex gap-2 flex-wrap" style="align-items:center">
         <input class="field" type="password" style="max-width:340px" id="ghTokenInput" placeholder="粘贴 GitHub Token（ghp_... 或 github_pat_...）">
         <button class="pillbtn dark" onclick="gistConnect()">连接</button>
-        <button class="pillbtn" onclick="gistPush(true)" style="color:#0a7d34">⬆ 上传本地到云端</button>
-        <button class="pillbtn" onclick="gistPull(true)" style="color:#1d4ed8">⬇ 从云端恢复</button>
+        <button class="pillbtn" onclick="gistPull(true)">立即同步</button>
         <button class="pillbtn" onclick="gistDisconnect()" style="color:#dc2626">断开</button>
       </div>
-      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">⚠️ <b style="color:var(--ink)">上传本地到云端</b>＝用本机数据覆盖云端（本机为准）；<b style="color:var(--ink)">从云端恢复</b>＝用云端数据覆盖本机（云端为准）。两者都会整份替换，操作前请确认哪边数据更新。</p>
       <div class="flex gap-2 flex-wrap mt-3" style="align-items:center">
         <input class="field" style="max-width:300px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）">
         <button class="pillbtn" onclick="copyGistId()">复制 ID</button>
@@ -965,7 +959,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
         <button class="pillbtn" onclick="exportData()">💾 导出整库备份</button>
         <button class="pillbtn" onclick="document.getElementById('importFile').click()">📂 导入备份</button>
       </div>
-      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，先导入备份再连同步码。<br>💡 导入时会先弹预览窗：若手机端缺少爆品/订单而电脑端有，选「合并导入」即可保留电脑数据；想让手机完全覆盖电脑则选「覆盖导入」。</p>
+      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，先导入备份再连同步码。</p>
     </div>
   </section>
 </main>
@@ -1047,21 +1041,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div class="flex gap-2 mt-5">
       <button class="pillbtn flex-1 justify-center" onclick="closeReminderSettings()">关闭</button>
       <button class="pillbtn dark flex-1 justify-center" onclick="saveReminderSettings()">保存</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ 导入预览弹窗 ============ -->
-<div id="importPreviewModal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4" style="background:rgba(20,20,20,.4);backdrop-filter:blur(6px)">
-  <div class="card p-6 w-full max-w-[420px]">
-    <h3 class="font-black text-lg mb-2">📂 导入预览</h3>
-    <p class="text-xs font-bold mb-4" style="color:var(--ink-2)">确认这份备份里有什么数据，再决定是<b>合并</b>还是<b>覆盖</b>当前工作台。</p>
-    <div id="importPreviewList" class="mb-4" style="max-height:260px;overflow:auto"></div>
-    <div id="importPreviewWarn" class="hidden p-3 rounded-xl mb-4 text-xs font-bold" style="background:#fff4f4;border:1.5px solid #f3c2c2;color:#7f1d1d"></div>
-    <div class="flex gap-2">
-      <button class="pillbtn flex-1 justify-center" onclick="closeImportPreview()">取消</button>
-      <button class="pillbtn dark flex-1 justify-center" onclick="applyImport('merge')">➕ 合并导入</button>
-      <button class="pillbtn dark flex-1 justify-center" onclick="applyImport('replace')" style="background:var(--pink)">🔄 覆盖导入</button>
     </div>
   </div>
 </div>
@@ -1214,7 +1193,7 @@ save();
 /* ================================================================
    通用工具
 ================================================================ */
-function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),ms||1800);}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 /* ================================================================
@@ -2137,115 +2116,21 @@ function exportData(){
   a.download='STONE-STUDIO_全量备份_'+todayStr()+'.json';a.click();
   toast('全量备份文件已下载');
 }
-let pendingImport=null; // 暂存待导入的数据
 function importData(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=()=>{try{const raw=JSON.parse(r.result);
-    // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 直接导出的整库对象
+    // 兼容两种格式：① 全量备份{__wb_backup__:true,db} ② 旧版看板裸数据
     const d=(raw&&raw.__wb_backup__&&raw.db)?raw.db:raw;
-    if(d&&typeof d==='object'&&!Array.isArray(d)){
-      pendingImport=d;
-      showImportPreview(d);
+    if(d&&d.tasks&&d.sales&&d.notes){
+      DB=normalizeDB(d);DB.seeded=true;save();
+      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
+      toast('导入成功，已恢复全部数据 ✅ 任务 '+DB.tasks.length+' 条 · 爆品 '+DB.baopin.filter(x=>x.items&&x.items.trim()).length+' 月 · 订单 '+DB.issues.length+' 条');
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
 }
-function showImportPreview(d){
-  const list=document.getElementById('importPreviewList');
-  const warn=document.getElementById('importPreviewWarn');
-  const counts=[
-    {key:'tasks',label:'任务 / 看板', arr:d.tasks||[]},
-    {key:'sales',label:'销售记录', arr:d.sales||[]},
-    {key:'notes',label:'笔记数据', arr:d.notes||[]},
-    {key:'accounts',label:'账号信息', arr:d.accounts||[]},
-    {key:'products',label:'商品库', arr:d.products||[]},
-    {key:'issues',label:'问题订单', arr:d.issues||[]},
-    {key:'baopin',label:'爆品月份', arr:(d.baopin||[]).filter(x=>x.items&&x.items.trim())},
-  ];
-  list.innerHTML=counts.map(c=>{
-    const cls=c.arr.length===0?'zero':'';
-    const warn=c.key==='tasks'&&c.arr.length===0?'<span class="warn">空库警告</span>':'';
-    return `<div class="import-stat"><span>${c.label}</span><b class="${cls}">${c.arr.length} ${c.key==='baopin'?'月':'条'}${warn}</b></div>`;
-  }).join('');
-  const hasTasks=!!(d.tasks&&d.tasks.length);
-  const hasBaopin=!!(d.baopin&&d.baopin.some(x=>x.items&&x.items.trim()));
-  const hasIssues=!!(d.issues&&d.issues.length);
-  if(!hasTasks&&!hasBaopin&&!hasIssues){
-    warn.classList.remove('hidden');warn.textContent='⚠️ 这份备份看起来是空库（没有任务、爆品、订单）。如果你是从手机导出，可能是手机端尚未保存数据，或导出的是旧版本。建议先在手机端确认数据存在后再导出。';
-  }else if(!hasBaopin&&!hasIssues){
-    warn.classList.remove('hidden');warn.textContent='提示：这份备份包含任务数据，但没有爆品/订单数据。若电脑端已有爆品/订单，建议选「合并导入」以保留电脑数据；若想让手机完全覆盖电脑，则选「覆盖导入」。';
-  }else{
-    warn.classList.add('hidden');warn.textContent='';
-  }
-  const m=document.getElementById('importPreviewModal');m.classList.remove('hidden');m.classList.add('flex');
-}
-function closeImportPreview(){const m=document.getElementById('importPreviewModal');m.classList.add('hidden');m.classList.remove('flex');pendingImport=null;}
-function applyImport(mode){
-  if(!pendingImport)return;
-  const d=pendingImport;
-  let result;
-  if(mode==='merge'){
-    result=mergeDB(DB,d);
-    toast('合并导入完成 ✅ '+importSummary(result),6000);
-  }else{
-    result=normalizeDB(d);
-    toast('覆盖导入完成 ✅ '+importSummary(result),6000);
-  }
-  DB=result;save();
-  renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
-  closeImportPreview();
-  if(gistId&&ghToken)gistPush(true); // 若已连同步，立即把导入的数据推上云端
-}
-function importSummary(db){
-  const t=(db.tasks||[]).length;
-  const b=(db.baopin||[]).filter(x=>x.items&&x.items.trim()).length;
-  const i=(db.issues||[]).length;
-  const s=(db.sales||[]).length;
-  const n=(db.notes||[]).length;
-  return `任务 ${t} 条 · 爆品 ${b} 月 · 订单 ${i} 条 · 销售 ${s} 条 · 笔记 ${n} 条`;
-}
-// 合并导入：按 ID/月份去重，保留两边数据，避免手机空字段把电脑已有数据抹掉
-function mergeDB(base,src){
-  const known={meta:{},tasks:[],sales:[],notes:[],accounts:[],products:[],shops:[],baopin:[],issues:[]};
-  const out=Object.assign({},known,base);
-  const mergeArr=(field,keyFn)=>{
-    const map=new Map();
-    (base[field]||[]).forEach(x=>map.set(keyFn(x),x));
-    (src[field]||[]).forEach(x=>{
-      const k=keyFn(x);
-      if(!map.has(k))map.set(k,x); // 新增
-      else if((x.updatedAt||0)>(map.get(k).updatedAt||0))map.set(k,x); // 以更新时间更新
-    });
-    out[field]=Array.from(map.values());
-  };
-  mergeArr('tasks',x=>x.id);
-  mergeArr('sales',x=>x.id);
-  mergeArr('notes',x=>x.id);
-  mergeArr('accounts',x=>x.id||x.name);
-  mergeArr('products',x=>x.id||(x.shop+'|'+x.name));
-  mergeArr('issues',x=>x.id);
-  // 爆品按月份合并：若 src 某月有内容则优先生效；若两边都有则换行合并
-  const bpMap=new Map();
-  (base.baopin||[]).forEach(x=>bpMap.set(x.month,x));
-  (src.baopin||[]).forEach(x=>{
-    const cur=bpMap.get(x.month);
-    if(!cur){bpMap.set(x.month,x);return;}
-    const srcItems=(x.items||'').trim();
-    const curItems=(cur.items||'').trim();
-    if(srcItems){
-      bpMap.set(x.month,{...cur,items:curItems?[curItems,srcItems].join('\n'):srcItems});
-    }
-  });
-  out.baopin=Array.from({length:12},(_,i)=>bpMap.get(i+1)||{month:i+1,items:''});
-  // shops 简单去重合并
-  const shopSet=new Set([...(base.shops||[]),...(src.shops||[])]);
-  out.shops=Array.from(shopSet);
-  out.seeded=true;
-  out.meta=Object.assign({},base.meta||{},src.meta||{},{updatedAt:Date.now()});
-  return out;
-}
-// 字段兜底：以导入数据为准全字段覆盖，绝不丢弃任何已有字段（含 baopin/issues 等）
+// 字段兜底：全字段保留，绝不丢弃 baopin(爆品)/issues(订单) 等任何已有字段
 function normalizeDB(d){
   const known={meta:{},tasks:[],sales:[],notes:[],accounts:[],products:[],shops:[],baopin:[],issues:[]};
   const out=Object.assign({},known,DB,d); // DB 兜底，导入 d 优先生效
@@ -2468,17 +2353,14 @@ function syncSchedulePush(){
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(gistPush,1500);
 }
-async function gistPush(manual){
-  if(!ghToken||!gistId){if(manual)toast('请先填写 Token 并连接');return;}
-  if(syncBusy)return;
+async function gistPush(){
+  if(!ghToken||!gistId||syncBusy)return;
   syncBusy=true;
   try{
-    DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();
     const r=await fetch(`${GH_API}/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+ghToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
     if(!r.ok)throw new Error('HTTP '+r.status);
     syncLastAt=Date.now();renderSyncStatus();
-    if(manual)toast('⬆ 已上传本机数据到云端');
-  }catch(e){if(manual)toast('上传失败：'+(e.message||e)+'（请检查网络/Tokens）');}
+  }catch(e){/* 离线时静默失败，下次保存自动重试 */}
   syncBusy=false;
 }
 async function gistPull(manual){
@@ -2514,17 +2396,12 @@ async function gistConnect(){
   ghToken=tok;localStorage.setItem(DB_KEY+'_ghtoken',tok);
   toast('正在连接 GitHub…');
   try{
-    // 连接前先校验 Token 有效性 + 读取 scope，给出精确诊断
-    const vr=await fetch(`${GH_API}/user`,{headers:{'Authorization':'Bearer '+tok}});
-    if(vr.status===401) throw new Error('Token 无效或已过期（请去 GitHub 重新生成）');
-    if(!vr.ok) throw new Error('GitHub 校验失败 (HTTP '+vr.status+')');
-    const scopes=(vr.headers.get('X-OAuth-Scopes')||vr.headers.get('x-oauth-scopes')||'').split(',').map(s=>s.trim().toLowerCase());
-    if(!scopes.includes('gist')) throw new Error('Token 缺少 gist 权限（去 GitHub 重新生成时务必勾选 gist）');
     if(gidInp){
       const r=await fetch(`${GH_API}/gists/${gidInp}`,{headers:{'Authorization':'Bearer '+tok}});
       if(!r.ok)throw new Error('Gist 不存在或无权限 (HTTP '+r.status+')');
       gistId=gidInp;localStorage.setItem(DB_KEY+'_gistid',gistId);
-      await gistMerge(true);
+      await gistPull(true);
+      toast('☁️ 已加入云端同步');
     }else if(!gistId){
       const r=await fetch(`${GH_API}/gists`,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({public:true,files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
       if(!r.ok)throw new Error('HTTP '+r.status);
@@ -2532,31 +2409,10 @@ async function gistConnect(){
       localStorage.setItem(DB_KEY+'_gistid',gistId);
       toast('☁️ 已创建云端同步');
     }else{
-      await gistMerge(true);
+      await gistPull(true);
     }
     startSyncLoop();renderSync();
   }catch(e){toast('连接失败：'+((e&&e.message)||e)+'（Token 是否有 gist 权限？）');}
-}
-// 安全合并：比对时间戳，云端新则拉取、本地新则上传，绝不无脑覆盖
-async function gistMerge(manual){
-  if(!gistId){if(manual)toast('请先连接 GitHub 同步');return;}
-  try{
-    const r=await fetch(`${GH_API}/gists/${gistId}`+(ghToken?'?t='+Date.now():''),ghToken?{headers:{'Authorization':'Bearer '+ghToken}}:{});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    const fc=j.files&&j.files[GIST_FILE]?j.files[GIST_FILE].content:null;
-    const remote=fc?JSON.parse(fc):null;
-    const remoteAt=remote&&remote.meta?remote.meta.updatedAt||0:0;
-    const localAt=DB.meta?DB.meta.updatedAt||0:0;
-    if(remote&&remoteAt>localAt){
-      DB=remote;localStorage.setItem(DB_KEY,JSON.stringify(DB));refreshCurrentView();
-      if(manual)toast('☁️ 已拉取云端最新数据（云端为准）');
-    }else{
-      await gistPush(true);
-      if(manual)toast('☁️ 已用本机数据更新云端（本机为准）');
-    }
-    syncLastAt=Date.now();renderSyncStatus();
-  }catch(e){if(manual)toast('同步失败：'+(e.message||e));}
 }
 function gistDisconnect(){
   gistId='';ghToken='';localStorage.removeItem(DB_KEY+'_gistid');localStorage.removeItem(DB_KEY+'_ghtoken');
@@ -2713,7 +2569,6 @@ function startReminderLoop(){
 renderHeader();renderHome();
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
-document.getElementById('importPreviewModal').addEventListener('click',e=>{if(e.target.id==='importPreviewModal')closeImportPreview();});
 if(gistId){startSyncLoop();gistPull();}
 checkReminders();startReminderLoop();
 </script>
