@@ -280,6 +280,8 @@ input,select,textarea{outline:none;font-family:inherit}
 .topcircle.dark{background:var(--badge-bg);color:var(--badge-fg);border-color:transparent}
 .topcircle svg{stroke:var(--ink)!important}
 .topcircle.dark svg{stroke:var(--badge-fg)!important}
+@keyframes wbSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.topcircle.spin svg{animation:wbSpin .6s linear}
 
 /* ===================== 扁平化新版元素 ===================== */
 .pill-flat{
@@ -599,6 +601,9 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <div class="flex-1 min-w-0 flex items-center justify-center gap-1.5">
     <span class="font-black text-base tracking-wide" id="pageTitle">Home</span>
   </div>
+  <button class="topcircle" id="refreshBtn" onclick="quickRefresh()" title="立即同步刷新（拉取云端最新数据）">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+  </button>
   <button class="topcircle dark" onclick="openApp('sync')" title="多设备同步">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
   </button>
@@ -2454,6 +2459,15 @@ async function gistPull(manual){
     }else if(manual){toast('本地已是最新');}
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){if(manual)toast('同步失败，请检查网络');}
+}
+// 顶部刷新按钮：主动拉取云端最新并刷新当前视图（无需进设置页，跨端删除/改动即时可见）
+let _refreshing=false;
+async function quickRefresh(){
+  const btn=document.getElementById('refreshBtn');
+  if(!btn||_refreshing)return;
+  _refreshing=true; btn.classList.add('spin');
+  try{ await gistPull(true); }catch(e){}
+  setTimeout(()=>{ btn.classList.remove('spin'); _refreshing=false; },300);
 }
 function refreshCurrentView(){
   const active=document.querySelector('.view.active');if(!active)return;
