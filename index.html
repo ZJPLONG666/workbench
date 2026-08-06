@@ -152,7 +152,7 @@ body{margin:0}
 
   /* 语义文字 */
   --ink:#1C1C1E;
-  --ink-2:#6E6E73;
+  --ink-2:#86868B;
 
   /* 卡片表面（白天：纯白卡） */
   --card-bg:#FFFFFF;
@@ -270,7 +270,7 @@ h1,h2,h3{letter-spacing:-.5px}
 .pillbtn.ghost{background:transparent;box-shadow:none}
 .pillbtn.bell{background:var(--badge-bg);color:var(--badge-fg);border-color:transparent}
 
-.chipx{border-radius:var(--r-pill);padding:6px 15px;min-height:40px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--ink);border:1px solid var(--surface-border);transition:all .18s;white-space:nowrap}
+.chipx{border-radius:var(--r-pill);padding:6px 15px;font-size:12px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--ink);border:1px solid var(--surface-border);transition:all .18s;white-space:nowrap}
 .chipx.on{background:var(--badge-bg);color:var(--badge-fg);border-color:transparent}
 
 .field{background:var(--field-bg);border:2px solid transparent;border-radius:var(--r-md);padding:9px 13px;font-size:14px;width:100%;outline:none;transition:border .15s;color:var(--ink);box-shadow:var(--shadow-sm)}
@@ -447,7 +447,7 @@ html[data-theme="dark"] .dock-wb{border-color:rgba(255,255,255,.14)}
 
 .kb-pop{display:none;position:fixed;z-index:210;background:var(--card-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--card-border);border-radius:var(--r-md);box-shadow:var(--shadow-float);padding:8px 10px;gap:6px;align-items:center;animation:kbmenuin .15s ease}
 .kb-pop.show{display:flex}
-.kb-tbtn{min-width:40px;height:40px;border:none;border-radius:7px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-2);font-weight:700;padding:0 6px}
+.kb-tbtn{min-width:28px;height:28px;border:none;border-radius:7px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-2);font-weight:700;padding:0 6px}
 .kb-tbtn:hover{background:rgba(255,255,255,.4)}
 .kb-tbtn.on{background:var(--badge-bg);color:var(--badge-fg)}
 .kb-sw{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer}
@@ -468,7 +468,7 @@ html[data-theme="dark"] .dock-wb{border-color:rgba(255,255,255,.14)}
 .kb-calpop .cnav{width:27px;height:27px;border-radius:50%;border:none;background:var(--surface);cursor:pointer;font-size:13px;color:var(--ink)}
 .kb-calpop .cwk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:10px;color:var(--ink-2);margin-bottom:5px;font-weight:700}
 .kb-calpop .cdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.kb-calpop .cd{height:40px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:12px;color:var(--ink);font-weight:600}
+.kb-calpop .cd{height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:12px;color:var(--ink);font-weight:600}
 .kb-calpop .cd:hover{background:rgba(255,255,255,.4)}
 .kb-calpop .cd.om{color:#d1d5db;pointer-events:none}
 .kb-calpop .cd.td{box-shadow:inset 0 0 0 2px var(--badge-bg);font-weight:900}
@@ -524,7 +524,7 @@ html[data-theme="dark"] .home-pill.dark-pill{border:1px solid rgba(255,255,255,.
 
 /* ===================== 电脑端内联导航 ===================== */
 .pcnav{display:none;align-items:center;gap:3px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-pill);padding:4px;box-shadow:var(--card-shadow)}
-.pcnav a{display:flex;align-items:center;gap:6px;padding:11px 16px;border-radius:var(--r-pill);font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:all .18s;white-space:nowrap;user-select:none}
+.pcnav a{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-pill);font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:all .18s;white-space:nowrap;user-select:none}
 .pcnav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .pcnav a:hover{color:var(--ink)}
 .pcnav a.on{background:var(--badge-bg);color:var(--badge-fg)}
