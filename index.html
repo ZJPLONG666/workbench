@@ -1116,6 +1116,8 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
    数据层：localStorage 持久化 + 云同步
 ================================================================ */
 const DB_KEY='zengsheng_workbench_v1';
+const GH_API='https://api.github.com';
+const GIST_FILE='workbench-data.json';
 /* 同步状态变量：必须在使用它的 save() 之前声明，否则触发 TDZ ReferenceError 导致整页空白 */
 let ghToken=localStorage.getItem(DB_KEY+'_ghtoken')||'';let gistId=localStorage.getItem(DB_KEY+'_gistid')||'';
 let syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
@@ -2352,10 +2354,8 @@ function deltaTxt(cur,prev){const d=cur-prev;return d===0?'±0':d>0?'+'+d:''+d;}
 
 /* ================================================================
    多设备云同步（同步码机制：同码设备自动互通）
+   GH_API/GIST_FILE 已在本 script 块顶部声明，避免 TDZ
 ================================================================ */
-const GH_API='https://api.github.com';
-const GIST_FILE='workbench-data.json';
-/* 变量（ghToken/gistId）已在文件顶部声明并读取 localStorage，此处仅重置计时器 */
 syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
 
 function syncSchedulePush(){
