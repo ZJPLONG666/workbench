@@ -331,7 +331,7 @@ input,select,textarea{outline:none;font-family:inherit}
 .flat-app-ico svg{stroke:var(--tile-ink)!important;stroke-width:1.8}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
-.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)}
+.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
 .flat-app-ico:hover{transform:scale(1.07)}
 .flat-app-name{font-size:12px;font-weight:700;color:var(--ink)}
 
@@ -674,7 +674,7 @@ html[data-theme="dark"] .kpi .kv,html[data-theme="dark"] .kpi .kl{color:var(--in
 .anm{font-size:11px;font-weight:600;color:var(--ink-2)}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
-.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)}
+.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
 
 /* 底部 Dock 改造为模板风格 */
 .dock{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;
@@ -686,6 +686,75 @@ html[data-theme="dark"] .dock{box-shadow:0 14px 36px rgba(0,0,0,.6)}
 .dock .dbtn:hover svg{stroke:var(--ink)}
 .dock .dbtn.on{background:var(--dock-on-bg)}
 .dock .dbtn.on svg{stroke:var(--dock-on-fg)}
+
+/* ==================== 每日利润 ==================== */
+.pf-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+@media(min-width:768px){.pf-kpis{grid-template-columns:repeat(4,1fr)}}
+.pf-kpi{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-xl);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.pf-kpi .l{font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.pf-kpi .v{font-size:20px;font-weight:700;letter-spacing:-.5px;font-family:'Space Grotesk','Noto Sans SC',sans-serif;margin-top:3px;color:var(--ink)}
+.pf-kpi .d{font-size:11px;font-weight:700;margin-top:3px;color:var(--ink-2)}
+.pf-up{color:#C4553F} .pf-dn{color:#4E8A63}
+html[data-theme="dark"] .pf-up{color:#E08A73} html[data-theme="dark"] .pf-dn{color:#8CC9A2}
+
+.pf-calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pf-ym{font-size:15px;font-weight:800;min-width:92px;text-align:center;color:var(--ink)}
+.pf-nav{width:30px;height:30px;border-radius:50%;border:1px solid var(--surface-border);background:var(--surface);color:var(--ink);font-size:15px;font-weight:800;cursor:pointer;display:grid;place-items:center;transition:all .16s}
+.pf-nav:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.pf-hint{margin-left:auto;font-size:11px;font-weight:700;color:var(--ink-2)}
+.pf-wk{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:6px}
+.pf-wk span{text-align:center;font-size:10.5px;font-weight:700;color:var(--ink-2)}
+.pf-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.pf-d{position:relative;min-height:46px;border-radius:var(--r-sm);border:1px solid transparent;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px 2px;transition:transform .15s,box-shadow .15s}
+.pf-d.has{cursor:pointer;background:var(--pf-bg);border-color:var(--pf-bd)}
+.pf-d.has:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.pf-d .n{font-size:11px;font-weight:800;color:var(--ink-2);line-height:1}
+.pf-d.has .n{color:var(--ink)}
+.pf-d .m{font-size:11px;font-weight:800;line-height:1.1;font-family:'Space Grotesk','Noto Sans SC',sans-serif;letter-spacing:-.3px;color:var(--ink);white-space:nowrap}
+.pf-d.today{outline:2px solid var(--badge-accent);outline-offset:-2px}
+.pf-d.mute{opacity:.3;min-height:46px}
+.pf-legend{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:10.5px;font-weight:700;color:var(--ink-2)}
+.pf-legend i{width:18px;height:10px;border-radius:3px;display:inline-block}
+
+.pf-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-xl);padding:16px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.pf-card-h{font-size:13.5px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.pf-card-h small{font-size:10.5px;font-weight:700;color:var(--ink-2)}
+.pf-chart{position:relative;height:230px}
+@media(min-width:768px){.pf-chart{height:260px}}
+.pf-empty{padding:44px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--ink-2);line-height:1.8}
+
+.pf-modal{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.42);display:none;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.pf-modal.on{display:flex}
+@media(min-width:768px){.pf-modal{align-items:center}}
+.pf-sheet{width:100%;max-width:680px;max-height:92vh;overflow-y:auto;background:var(--card-bg);border-radius:var(--r-2xl) var(--r-2xl) 0 0;padding:18px 16px 32px;box-shadow:var(--shadow-float);animation:viewin .3s cubic-bezier(.16,1,.3,1)}
+@media(min-width:768px){.pf-sheet{border-radius:var(--r-2xl);padding:22px 22px 26px}}
+.pf-sheet-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.pf-sheet-top b{font-size:17px;font-weight:800;display:block;color:var(--ink)}
+.pf-sheet-top span{font-size:11px;font-weight:700;color:var(--ink-2);display:block;margin-top:3px}
+.pf-x{margin-left:auto;flex-shrink:0;width:31px;height:31px;border-radius:50%;border:1px solid var(--surface-border);background:var(--surface);color:var(--ink);cursor:pointer;font-size:13px;display:grid;place-items:center}
+.pf-mini{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px}
+@media(min-width:640px){.pf-mini{grid-template-columns:repeat(4,1fr)}}
+.pf-mini div{background:var(--surface);border-radius:var(--r-md);padding:10px 12px}
+.pf-mini .l{font-size:10.5px;font-weight:700;color:var(--ink-2)}
+.pf-mini .v{font-size:16px;font-weight:800;color:var(--ink);font-family:'Space Grotesk','Noto Sans SC',sans-serif;margin-top:2px}
+.pf-sub{font-size:12.5px;font-weight:800;margin:18px 0 8px;display:flex;align-items:center;gap:7px;color:var(--ink)}
+.pf-2col{display:grid;gap:14px}
+@media(min-width:660px){.pf-2col{grid-template-columns:1fr 1fr}}
+.pf-piebox{background:var(--surface);border-radius:var(--r-lg);padding:12px 10px 8px}
+.pf-piebox .t{font-size:11.5px;font-weight:800;text-align:center;color:var(--ink);margin-bottom:2px}
+.pf-piebox .h{position:relative;height:210px}
+.pf-sku{width:100%;border-collapse:collapse;font-size:11.5px}
+.pf-sku th{text-align:left;padding:7px 3px;color:var(--ink-2);font-weight:700;border-bottom:2px solid var(--hairline);white-space:nowrap;font-size:10px}
+.pf-sku td{padding:7px 3px;border-bottom:1px solid var(--hairline);font-weight:600;color:var(--ink);font-size:11.5px}
+.pf-sku td:first-child,.pf-sku th:first-child{padding-left:4px;max-width:96px;overflow-wrap:anywhere}
+.pf-sku td.num{text-align:right;font-family:'Space Grotesk','Noto Sans SC',sans-serif;font-weight:700}
+.pf-sku tr.cat td{background:var(--surface);font-weight:800;font-size:11.5px}
+.pf-sku tr.tot td{font-weight:800;border-top:2px solid var(--hairline);border-bottom:none;font-size:12.5px}
+.pf-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0}
+.pf-ins{margin:0;padding-left:18px}
+.pf-ins li{margin:7px 0;font-size:12.5px;line-height:1.65;font-weight:600;color:var(--ink)}
+.pf-ins li b{font-weight:800}
+.pf-warn{margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:var(--pink-soft);font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.7}
 
 </style>
 <script>
@@ -712,6 +781,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <a data-nav="accounts"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg>账号</a>
     <a data-nav="issues"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg>问题</a>
     <a data-nav="baopin"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg>爆品</a>
+    <a data-nav="profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg>利润</a>
   </nav>
   <button class="topcircle" id="refreshBtn" onclick="quickRefresh()" title="立即同步刷新（拉取云端最新数据）">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -742,6 +812,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="chip" onclick="openApp('dashboard')"><span class="ci" style="background:var(--c-mint)"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-6M11 19v-9M15.5 19v-4M20 19v-8"/></svg></span>数据</div>
       <div class="chip" onclick="openApp('accounts')"><span class="ci" style="background:var(--c-lilac)"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></span>账号</div>
       <div class="chip" onclick="openApp('baopin')"><span class="ci" style="background:var(--c-peach)"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></span>爆品</div>
+      <div class="chip" onclick="openApp('profit')"><span class="ci" style="background:var(--c-lime)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></span>利润</div>
     </div>
 
     <div class="pc-grid">
@@ -771,6 +842,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           <div class="app" onclick="openApp('sync')"><div class="aico i-sync"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg></div><span class="anm">同步</span></div>
           <div class="app" onclick="openApp('issues')"><div class="aico i-iss"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></div><span class="anm">问题订单</span></div>
           <div class="app" onclick="openApp('baopin')"><div class="aico i-bao"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></div><span class="anm">爆品时间表</span></div>
+          <div class="app" onclick="openApp('profit')"><div class="aico i-profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></div><span class="anm">每日利润</span></div>
           <div class="app" onclick="toggleWB(true)"><div class="aico i-wb"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10h7M8.5 13h4"/></svg></div><span class="anm">小策</span></div>
         </div>
       </div>
@@ -933,6 +1005,46 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div id="baopinWrap"></div>
   </section>
 
+  <!-- ============ 每日利润 ============ -->
+  <section id="view-profit" class="view">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <h2 class="section-h flex-1">💰 每日利润</h2>
+      <button class="pillbtn" onclick="profitReload(true)">🔄 拉取最新</button>
+    </div>
+
+    <div class="pf-kpis" id="pfKpis"></div>
+
+    <div class="pf-card">
+      <div class="pf-card-h">📅 每日利润日历 <small id="pfCalSub"></small></div>
+      <div class="pf-calhead">
+        <button class="pf-nav" onclick="profitMonth(-1)" title="上个月">‹</button>
+        <div class="pf-ym" id="pfYm">—</div>
+        <button class="pf-nav" onclick="profitMonth(1)" title="下个月">›</button>
+        <span class="pf-hint">点某天看当天明细 →</span>
+      </div>
+      <div class="pf-wk"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div class="pf-grid" id="pfGrid"></div>
+      <div class="pf-legend"><span>利润越高，底色越深</span><i style="background:rgba(155,139,208,.12)"></i><i style="background:rgba(155,139,208,.42)"></i><i style="background:rgba(155,139,208,.78)"></i></div>
+    </div>
+
+    <div class="pf-card">
+      <div class="pf-card-h">📈 各品类日订单量 <small>最近 10 个有数据的交易日</small></div>
+      <div class="pf-chart"><canvas id="pfCatChart"></canvas></div>
+    </div>
+
+    <div class="pf-card">
+      <div class="pf-card-h">💹 每日总利润 <small>最近 10 个有数据的交易日</small></div>
+      <div class="pf-chart"><canvas id="pfProfitChart"></canvas></div>
+    </div>
+
+    <p class="text-xs font-bold" style="color:var(--ink-2)">数据来源：千帆「包裹详情」导出 · 每天中午自动结算前一天 · 按支付时间归日，已剔除已取消订单</p>
+  </section>
+
+  <!-- 每日利润 · 某天明细（底部抽屉） -->
+  <div class="pf-modal" id="pfModal" onclick="if(event.target===this)closeProfitDay()">
+    <div class="pf-sheet" id="pfSheet"></div>
+  </div>
+
   <!-- ============ 多设备同步 ============ -->
   <section id="view-sync" class="view">
     <h2 class="section-h mb-5">多设备同步</h2>
@@ -1083,6 +1195,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dbtn" data-nav="accounts" title="账号管理"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></button>
   <button class="dbtn" data-nav="issues" title="问题订单"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></button>
   <button class="dbtn" data-nav="baopin" title="爆品时间表"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></button>
+  <button class="dbtn" data-nav="profit" title="每日利润"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></button>
 </nav>
 
 <!-- ============ WorkBuddy 右侧 50% 透明度悬浮弹窗 ============ -->
@@ -1233,8 +1346,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin','profit'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表',profit:'每日利润'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1254,6 +1367,7 @@ function openApp(name){
   if(name==='sync')renderSync();
   if(name==='issues')renderIssues();
   if(name==='baopin')renderBaopin();
+  if(name==='profit')renderProfit();
 }
 /* ===================== 爆品时间表 ===================== */
 function renderBaopin(){
@@ -2464,6 +2578,343 @@ async function quickRefresh(){
   try{ await sbPull(true); }catch(e){ toast('同步失败，请检查网络'); }
   setTimeout(()=>{ btn.classList.remove('spin'); _refreshing=false; },300);
 }
+/* ==================================================================
+   每日利润
+   数据由每日中午的定时任务算出并写入 Supabase 独立房间 <口令>__profit
+   （独立房间：主数据每 8 秒轮询，46KB 的 SKU 明细塞进去会白白吃流量）
+================================================================== */
+const PF_ROOM_SUFFIX='__profit';
+const PF_HEAT='155,139,208';                 // 利润主题色（紫，与 --badge-accent 同族；避开红涨绿跌歧义）
+const PF_PIE=['#8FB4DC','#B49BE0','#A8C96A','#E8A97E','#7FBF9B','#DFA0C4','#D9C36A','#6FA0C9','#C4A9E8','#9CC98F','#E59BB0','#C9B08A'];
+let profitCache=null,profitLoading=false,pfMonth=null,pfCurDay=null,pfCharts={},pfDayCharts=[];
+
+function pfMoney(v){return '¥'+(+v||0).toFixed(2);}
+function pfYmd(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function pfDays(){return (profitCache&&profitCache.days)||{};}
+function pfKeys(){return Object.keys(pfDays()).sort();}
+function pfTheme(){const dark=document.documentElement.dataset.theme==='dark';
+  return {grid:dark?'rgba(255,255,255,.10)':'rgba(0,0,0,.07)',tick:dark?'#8E8E93':'#86868B'};}
+function pfEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------- 数据读取：独立房间按需拉取，localStorage 做秒开缓存 ---------- */
+function profitCacheLoad(){try{const s=localStorage.getItem(DB_KEY+'_profit');if(s){profitCache=JSON.parse(s);return true;}}catch(e){}return false;}
+function profitCacheSave(d){try{localStorage.setItem(DB_KEY+'_profit',JSON.stringify(d));}catch(e){}}
+async function profitFetch(){
+  const room=(syncRoom||SB_ROOM_DEFAULT)+PF_ROOM_SUFFIX;
+  const url=`${SB_URL}/rest/v1/${SB_TABLE}?room=eq.${encodeURIComponent(room)}&select=data`;
+  const r=await fetch(url,{headers:sbHeaders(),cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const rows=await r.json();
+  return (rows[0]&&rows[0].data&&rows[0].data.profit)||null;
+}
+async function profitReload(manual){
+  if(profitLoading)return; profitLoading=true;
+  if(manual)toast('正在拉取利润数据…');
+  try{
+    const d=await profitFetch();
+    if(d&&d.days){profitCache=d;profitCacheSave(d);}
+    renderProfit(true);
+    if(manual)toast(d&&d.days?`已拉取 ${Object.keys(d.days).length} 天利润数据`:('云端暂无利润数据'+(d&&d.generatedAt?'' :'，等每天中午自动结算')));
+  }catch(e){ if(manual)toast('拉取失败：'+((e&&e.message)||e)); }
+  profitLoading=false;
+}
+
+/* ---------- 主渲染 ---------- */
+function renderProfit(noFetch){
+  const wrap=document.getElementById('pfGrid'); if(!wrap)return;
+  if(!profitCache) profitCacheLoad();
+  const keys=pfKeys(), days=pfDays();
+
+  if(!keys.length){
+    document.getElementById('pfKpis').innerHTML='';
+    document.getElementById('pfYm').textContent=(pfMonth||pfYmd(new Date()).slice(0,7)).replace('-','年')+'月';
+    document.getElementById('pfCalSub').textContent='';
+    wrap.innerHTML=`<div class="pf-empty" style="grid-column:1/-1">还没有利润数据<br><span style="font-size:11.5px">每天中午 12 点自动结算前一天的销售清单</span><br><br><button class="pillbtn" onclick="profitReload(true)">🔄 立即拉取云端</button></div>`;
+    [pfCharts.cat,pfCharts.profit].forEach(c=>{try{c&&c.destroy();}catch(e){}});
+    pfCharts={};
+    if(!noFetch&&!profitLoading) profitReload(false);
+    return;
+  }
+
+  if(!pfMonth) pfMonth=keys[keys.length-1].slice(0,7);
+  const last=days[keys[keys.length-1]];
+  const prev=keys.length>1?days[keys[keys.length-2]]:null;
+  const df=prev?last.profit-prev.profit:0, dfp=prev&&prev.profit?df/prev.profit*100:0;
+  const mKeys=keys.filter(k=>k.slice(0,7)===pfMonth);
+  const mProfit=mKeys.reduce((a,k)=>a+days[k].profit,0);
+  const mOrders=mKeys.reduce((a,k)=>a+days[k].orders,0);
+  const mAvg=mKeys.length?mProfit/mKeys.length:0;
+  document.getElementById('pfKpis').innerHTML=`
+    <div class="pf-kpi"><div class="l">${pfMonth.replace('-','年')}月总利润</div><div class="v">¥${mProfit.toFixed(2)}</div><div class="d">${mKeys.length} 个交易日 · ${mOrders} 单</div></div>
+    <div class="pf-kpi"><div class="l">本月日均利润</div><div class="v">¥${mAvg.toFixed(2)}</div><div class="d">看完整个月的节奏</div></div>
+    <div class="pf-kpi"><div class="l">最新一天 · ${keys[keys.length-1]}</div><div class="v">¥${last.profit.toFixed(2)}</div><div class="d">${last.orders} 单 · 利润率 ${(last.revenue?last.profit/last.revenue*100:0).toFixed(1)}%</div></div>
+    <div class="pf-kpi"><div class="l">环比前一天</div><div class="v ${df>=0?'pf-up':'pf-dn'}">${df>=0?'+':''}${df.toFixed(2)}</div><div class="d">${prev?`${dfp>=0?'+':''}${dfp.toFixed(1)}% · 对比 ${keys[keys.length-2]}`:'暂无前一天数据'}</div></div>`;
+
+  // ---- 日历 ----
+  const [yy,mm]=pfMonth.split('-').map(Number);
+  const dim=new Date(yy,mm,0).getDate();
+  const startDow=(new Date(yy,mm-1,1).getDay()+6)%7;   // 周一为第一列
+  const todayS=pfYmd(new Date());
+  const mx=Math.max.apply(null,mKeys.map(k=>days[k].profit).concat([1]));
+  let html='';
+  for(let i=0;i<startDow;i++) html+='<div class="pf-d mute"></div>';
+  for(let d=1;d<=dim;d++){
+    const ds=`${yy}-${String(mm).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec=days[ds];
+    if(rec){
+      const t=Math.max(.14,Math.min(1,rec.profit/mx));
+      html+=`<div class="pf-d has${ds===todayS?' today':''}" style="--pf-bg:rgba(${PF_HEAT},${(t*0.72).toFixed(3)});--pf-bd:rgba(${PF_HEAT},${(t*0.9).toFixed(3)})" onclick="openProfitDay('${ds}')" title="${ds} · ${rec.orders} 单 · ¥${rec.profit.toFixed(2)}"><span class="n">${d}</span><span class="m">¥${Math.round(rec.profit)}</span></div>`;
+    }else{
+      html+=`<div class="pf-d${ds===todayS?' today':''}"><span class="n">${d}</span></div>`;
+    }
+  }
+  wrap.innerHTML=html;
+  document.getElementById('pfYm').textContent=`${yy} 年 ${mm} 月`;
+  document.getElementById('pfCalSub').textContent=mKeys.length?`本月 ${mKeys.length} 天有数据 · 合计 ¥${mProfit.toFixed(2)}`:'本月暂无数据';
+  pfDrawCharts(keys.slice(-10),days);
+}
+
+function profitMonth(delta){
+  const keys=pfKeys();
+  if(!pfMonth)pfMonth=keys.length?keys[keys.length-1].slice(0,7):pfYmd(new Date()).slice(0,7);
+  let [y,m]=pfMonth.split('-').map(Number);
+  m+=delta; if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+  pfMonth=`${y}-${String(m).padStart(2,'0')}`;
+  renderProfit(true);
+}
+
+/* ---------- 百分比直接画进扇形里（需求明确要求） ---------- */
+const pfPctPlugin={
+  id:'pfPctText',
+  afterDatasetsDraw(c){
+    if(!c.ctx)return;
+    const dark=document.documentElement.dataset.theme==='dark';
+    c.data.datasets.forEach((ds,di)=>{
+      const meta=c.getDatasetMeta(di);
+      if(!meta||!meta.data||(meta.type!=='doughnut'&&meta.type!=='pie'))return;
+      const tot=(ds.data||[]).reduce((a,b)=>a+(+b||0),0)||1;
+      meta.data.forEach((arc,i)=>{
+        const v=+ds.data[i]||0; if(!v)return;
+        const pct=v/tot*100; if(pct<3)return;                 // 太小不画，避免糊成一团
+        const a=(arc.startAngle+arc.endAngle)/2;
+        const rad=(arc.innerRadius+arc.outerRadius)/2;
+        const x=arc.x+Math.cos(a)*rad, y=arc.y+Math.sin(a)*rad;
+        const txt=pct.toFixed(1)+'%';
+        c.ctx.save();
+        c.ctx.font='800 11px "DM Sans","Noto Sans SC",system-ui,sans-serif';
+        c.ctx.textAlign='center'; c.ctx.textBaseline='middle';
+        c.ctx.lineWidth=3.2;
+        c.ctx.strokeStyle=dark?'rgba(24,24,28,.88)':'rgba(255,255,255,.94)';
+        c.ctx.strokeText(txt,x,y);
+        c.ctx.fillStyle=dark?'#F2F2F7':'#1C1C1E';
+        c.ctx.fillText(txt,x,y);
+        c.ctx.restore();
+      });
+    });
+  }
+};
+if(window.Chart){try{if(!Chart.registry.plugins.get('pfPctText'))Chart.register(pfPctPlugin);}catch(e){Chart.register(pfPctPlugin);}}
+
+/* ---------- 折线图：各品类订单量 + 总利润 ---------- */
+/* Chart.js 走 CDN，弱网下可能比页面主体慢。这里做自动重试（最多约 12 秒），
+   避免用户恰好撞上"脚本还没到位"就看到一句报错、必须手动刷新。 */
+let pfChartWait=0;
+function pfWaitChart(cb){
+  if(window.Chart){pfChartWait=0;cb();return;}
+  if(pfChartWait>=30){
+    const box=document.getElementById('pfCatChart');
+    if(box&&box.parentNode)box.parentNode.innerHTML='<div class="pf-empty">图表库（Chart.js CDN）没加载出来，请检查网络后刷新</div>';
+    return;
+  }
+  pfChartWait++;
+  setTimeout(()=>pfWaitChart(cb),400);
+}
+function pfDrawCharts(keys,days){
+  const box=document.getElementById('pfCatChart');
+  if(!box)return;
+  if(!window.Chart){pfWaitChart(()=>pfDrawCharts(keys,days));return;}
+  const th=pfTheme();
+  [pfCharts.cat,pfCharts.profit].forEach(c=>{try{c&&c.destroy();}catch(e){}});
+  const labels=keys.map(k=>k.slice(5));
+
+  const cats=[];
+  keys.forEach(k=>Object.keys(days[k].categories||{}).forEach(c=>{if(cats.indexOf(c)<0)cats.push(c);}));
+  pfCharts.cat=new Chart(document.getElementById('pfCatChart'),{
+    type:'line',
+    data:{labels:labels,datasets:cats.map((c,i)=>({
+      label:c, data:keys.map(k=>{const v=days[k].categories[c];return v?v.orders:0;}),
+      borderColor:PF_PIE[i%PF_PIE.length], backgroundColor:PF_PIE[i%PF_PIE.length],
+      borderWidth:2.4, tension:.34, pointRadius:3, pointHoverRadius:5, pointBackgroundColor:PF_PIE[i%PF_PIE.length]}))},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',font:{size:11,weight:'700'},color:th.tick}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}：${c.parsed.y} 单`}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.tick,font:{size:10.5,weight:'700'}}},
+        y:{beginAtZero:true,grid:{color:th.grid},ticks:{color:th.tick,font:{size:10.5},precision:0}}}}
+  });
+
+  const th2=pfTheme(), dark=document.documentElement.dataset.theme==='dark';
+  pfCharts.profit=new Chart(document.getElementById('pfProfitChart'),{
+    type:'line',
+    data:{labels:labels,datasets:[{
+      label:'总利润', data:keys.map(k=>days[k].profit),
+      borderColor:'#9B8BD0', borderWidth:2.8, tension:.34,
+      pointRadius:3.4, pointHoverRadius:6, pointBackgroundColor:'#9B8BD0',
+      fill:true, backgroundColor:dark?'rgba(155,139,208,.18)':'rgba(155,139,208,.14)'}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>` 利润 ${pfMoney(c.parsed.y)}（${days[keys[c.dataIndex]].orders} 单）`}}},
+      scales:{x:{grid:{display:false},ticks:{color:th2.tick,font:{size:10.5,weight:'700'}}},
+        y:{beginAtZero:true,grid:{color:th2.grid},ticks:{color:th2.tick,font:{size:10.5},callback:v=>'¥'+v}}}}
+  });
+}
+
+/* ---------- 某天明细 ---------- */
+/* 每个 SKU 一个可区分的低饱和色。前 12 个用调好的粉彩色板，
+   超出后按黄金角生成同族新色，保证同一天内不重色、深浅一致。 */
+function pfColor(i){
+  if(i<PF_PIE.length)return PF_PIE[i];
+  const h=Math.round((i*137.508+205)%360);
+  const s=40+((i%3)*5), l=62+((i%4)*4);
+  return `hsl(${h},${s}%,${l}%)`;
+}
+function pfDayData(ds){
+  const d=pfDays()[ds]; if(!d)return null;
+  const all=[];
+  Object.keys(d.categories).forEach(c=>{
+    (d.categories[c].skus||[]).forEach(s=>all.push({cat:c,label:s.label,orders:s.orders,qty:s.qty,revenue:s.revenue,profit:s.profit}));
+  });
+  all.sort((a,b)=>b.profit-a.profit);
+  const colorOf=new Map();
+  all.forEach((s,i)=>colorOf.set(s.cat+'|'+s.label,pfColor(i)));
+  return {d:d,all:all,colorOf:colorOf};
+}
+function openProfitDay(ds){
+  const info=pfDayData(ds); if(!info)return;
+  const d=info.d, all=info.all;
+  pfCurDay=ds;
+  const wd=['周日','周一','周二','周三','周四','周五','周六'][new Date(ds+'T00:00:00').getDay()];
+  const rate=d.revenue?d.profit/d.revenue*100:0, aov=d.orders?d.revenue/d.orders:0;
+
+  // 每个 SKU 都单独成一个扇区（不做"其他"合并），两张饼图与表格颜色一一对应
+  const pieLabels=all.map(s=>s.label);
+  const pieC=all.map(s=>info.colorOf.get(s.cat+'|'+s.label));
+  const pieOrders=all.map(s=>s.orders);
+  const pieProfit=all.map(s=>s.profit);
+
+  let h=`<div class="pf-sheet-top">
+    <div><b>${ds} ${wd}</b><span>来源：${pfEsc((d.sources||[]).join('、')||'—')} · 已剔除已取消订单 ${d.cancelled||0} 单</span></div>
+    <button class="pf-x" onclick="closeProfitDay()">✕</button></div>`;
+
+  h+=`<div class="pf-mini">
+    <div><div class="l">当日总利润</div><div class="v">${pfMoney(d.profit)}</div></div>
+    <div><div class="l">订单数 / 件数</div><div class="v">${d.orders} 单 · ${d.qty}</div></div>
+    <div><div class="l">销售额</div><div class="v">${pfMoney(d.revenue)}</div></div>
+    <div><div class="l">利润率 · 客单价</div><div class="v">${rate.toFixed(1)}% · ${pfMoney(aov)}</div></div>
+  </div>`;
+
+  h+=`<div class="pf-sub">🥧 销量与利润占比（按 SKU）</div><div class="pf-2col">
+    <div class="pf-piebox"><div class="t">销量占比（按订单数）</div><div class="h"><canvas id="pfPie1"></canvas></div></div>
+    <div class="pf-piebox"><div class="t">利润占比（元）</div><div class="h"><canvas id="pfPie2"></canvas></div></div>
+  </div>`;
+
+  h+=`<div class="pf-sub">📋 SKU 明细 <small style="font-weight:700;color:var(--ink-2)">颜色对应上方饼图</small></div><div style="overflow-x:auto"><table class="pf-sku"><thead><tr>
+    <th>品类 / SKU</th><th style="text-align:right">订单</th><th style="text-align:right">件/卷</th>
+    <th style="text-align:right">销售额</th><th style="text-align:right">利润</th>
+    <th style="text-align:right">销量%</th><th style="text-align:right">利润%</th></tr></thead><tbody>`;
+  Object.keys(d.categories).forEach(c=>{
+    const v=d.categories[c];
+    h+=`<tr class="cat"><td>${pfEsc(c)}</td><td class="num">${v.orders}</td><td class="num">${v.qty}</td><td class="num">${pfMoney(v.revenue)}</td><td class="num">${pfMoney(v.profit)}</td><td class="num">${d.orders?(v.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(v.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
+    (v.skus||[]).forEach(s=>{
+      h+=`<tr><td><span class="pf-dot" style="background:${info.colorOf.get(c+'|'+s.label)}"></span>${pfEsc(s.label)}</td><td class="num">${s.orders}</td><td class="num">${s.qty}</td><td class="num">${pfMoney(s.revenue)}</td><td class="num">${pfMoney(s.profit)}</td><td class="num">${d.orders?(s.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(s.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
+    });
+  });
+  h+=`<tr class="tot"><td>当日合计</td><td class="num">${d.orders}</td><td class="num">${d.qty}</td><td class="num">${pfMoney(d.revenue)}</td><td class="num">${pfMoney(d.profit)}</td><td class="num">100.0%</td><td class="num">100.0%</td></tr></tbody></table></div>`;
+
+  h+=`<div class="pf-sub">🧭 当日数据总分析</div><ul class="pf-ins">${pfInsights(ds).map(x=>'<li>'+x+'</li>').join('')}</ul>`;
+  if(d.analysis) h+=`<div class="pf-sub">🗒 运营总监点评</div><p style="font-size:12.5px;line-height:1.75;font-weight:600;color:var(--ink);margin:0">${d.analysis}</p>`;
+  if(d.warnings&&d.warnings.length) h+=`<div class="pf-warn">⚠️ 需要你确认成本价：<br>${d.warnings.map(w=>'· '+pfEsc(w)).join('<br>')}</div>`;
+
+  document.getElementById('pfSheet').innerHTML=h;
+  document.getElementById('pfModal').classList.add('on');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{
+    const drawDay=()=>{
+      pfDayCharts.forEach(c=>{try{c.destroy();}catch(e){}}); pfDayCharts=[];
+      const mk=(id,vals)=>{
+        const el=document.getElementById(id); if(!el)return;
+        pfDayCharts.push(new Chart(el,{
+          type:'doughnut',
+          data:{labels:pieLabels,datasets:[{data:vals,backgroundColor:pieC,borderColor:document.documentElement.dataset.theme==='dark'?'#1E1E22':'#fff',borderWidth:2}]},
+          options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}：${vals===pieProfit?pfMoney(c.parsed):(c.parsed+' 单')}`}}}}
+        }));
+      };
+      mk('pfPie1',pieOrders);
+      mk('pfPie2',pieProfit);
+    };
+    if(!window.Chart){pfWaitChart(drawDay);return;}
+    drawDay();
+  },40);
+}
+function closeProfitDay(){
+  document.getElementById('pfModal').classList.remove('on');
+  document.body.style.overflow='';
+  pfDayCharts.forEach(c=>{try{c.destroy();}catch(e){}}); pfDayCharts=[];
+  pfCurDay=null;
+}
+
+/* ---------- 当日数据分析（全部从数据推出来，不靠模型编） ---------- */
+function pfInsights(ds){
+  const days=pfDays(), keys=Object.keys(days).sort();
+  const d=days[ds]; if(!d)return [];
+  const i=keys.indexOf(ds);
+  const prev=i>0?days[keys[i-1]]:null, prevDate=i>0?keys[i-1]:null;
+  const span=keys.slice(Math.max(0,i-6),i+1).map(k=>days[k]);
+  const avg=span.reduce((a,b)=>a+b.profit,0)/span.length;
+  const out=[];
+
+  if(prev){
+    const df=d.profit-prev.profit, pct=prev.profit?df/prev.profit*100:0;
+    out.push(`环比前一天（${prevDate}）：利润 <b>${df>=0?'+':''}${df.toFixed(2)} 元</b>（${pct>=0?'+':''}${pct.toFixed(1)}%），${df>=0?'走势走强 📈':'出现回落 📉'}；订单 ${d.orders} 单 vs ${prev.orders} 单（${d.orders-prev.orders>=0?'+':''}${d.orders-prev.orders}）。`);
+  }
+  out.push(`近 ${span.length} 天日均利润 <b>${pfMoney(avg)}</b>，当天${d.profit>=avg?'高于':'低于'}均值 <b>${pfMoney(Math.abs(d.profit-avg))}</b>（${avg?((d.profit-avg)/avg*100).toFixed(1):'0.0'}%）。`);
+
+  const rate=d.revenue?d.profit/d.revenue*100:0, aov=d.orders?d.revenue/d.orders:0;
+  out.push(`销售额 ${pfMoney(d.revenue)}，利润率 <b>${rate.toFixed(1)}%</b>，客单价 <b>${pfMoney(aov)}</b>；平均每单赚 <b>${pfMoney(d.orders?d.profit/d.orders:0)}</b>。`);
+
+  const catArr=Object.keys(d.categories).map(c=>({c:c,v:d.categories[c]})).sort((a,b)=>b.v.profit-a.v.profit);
+  if(catArr.length){
+    const top=catArr[0];
+    out.push(`利润主力：<b>${top.c}</b> ${top.v.orders} 单贡献 <b>${pfMoney(top.v.profit)}</b>，占当天总利润 <b>${(top.v.profit/d.profit*100).toFixed(1)}%</b>，占总订单 <b>${(top.v.orders/d.orders*100).toFixed(1)}%</b>。`);
+    if(catArr.length>1){
+      const w=catArr[catArr.length-1];
+      if(w.v.profit<=0) out.push(`⚠️ <b>${w.c}</b> 当天利润为 ${pfMoney(w.v.profit)}（${w.v.orders} 单），基本不赚钱，建议看下这天的价格或成本。`);
+      else out.push(`利润最薄的是 <b>${w.c}</b>：${w.v.orders} 单仅 ${pfMoney(w.v.profit)}（占 ${(w.v.profit/d.profit*100).toFixed(1)}%）。`);
+    }
+  }
+  if(prev){
+    const shifts=[];
+    Object.keys(d.categories).forEach(c=>{
+      const a=d.categories[c].orders, b=prev.categories[c]?prev.categories[c].orders:0;
+      if(Math.abs(a-b)>=8) shifts.push(`${c} ${b}→${a} 单`);
+    });
+    if(shifts.length) out.push(`订单结构变化：${shifts.join('；')}。`);
+  }
+  const all=[];
+  Object.keys(d.categories).forEach(c=>(d.categories[c].skus||[]).forEach(s=>all.push({cat:c,label:s.label,orders:s.orders,profit:s.profit})));
+  all.sort((a,b)=>b.profit-a.profit);
+  if(all.length){
+    const t1=all[0];
+    out.push(`最赚钱单品：<b>${t1.cat} · ${pfEsc(t1.label)}</b>，${t1.orders} 单赚 <b>${pfMoney(t1.profit)}</b>（占总利润 ${(t1.profit/d.profit*100).toFixed(1)}%）。`);
+    if(all.length>=3){
+      const t3=all.slice(0,3).reduce((a,b)=>a+b.profit,0);
+      out.push(`利润集中度：前 3 个 SKU 合计 ${pfMoney(t3)}，占总利润 <b>${(t3/d.profit*100).toFixed(1)}%</b>${t3/d.profit>0.6?'（比较依赖头部单品，注意分散风险）':''}。`);
+    }
+  }
+  if(d.cancelled/d.orders>0.15) out.push(`⚠️ 已取消 ${d.cancelled} 单，占成交 ${(d.cancelled/(d.orders+d.cancelled)*100).toFixed(1)}%，偏高，留意是不是库存或物流问题。`);
+  return out;
+}
+
 function refreshCurrentView(){
   const active=document.querySelector('.view.active');if(!active)return;
   const v=active.id.replace('view-','');
@@ -2472,6 +2923,9 @@ function refreshCurrentView(){
   if(v==='calendar'){renderCalendar();renderDayTasks();}
   if(v==='dashboard')renderDashboard();
   if(v==='accounts')renderAccounts();
+  if(v==='issues')renderIssues();
+  if(v==='baopin')renderBaopin();
+  if(v==='profit')renderProfit(true);
 }
 async function sbConnect(){
   const inp=document.getElementById('roomInput');
