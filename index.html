@@ -745,6 +745,8 @@ html[data-theme="dark"] .pf-up{color:#E08A73} html[data-theme="dark"] .pf-dn{col
 .pf-sku td:first-child,.pf-sku th:first-child{padding-left:4px;max-width:96px;overflow-wrap:anywhere}
 .pf-sku td.num{text-align:right;font-family:'Space Grotesk','Noto Sans SC',sans-serif;font-weight:700}
 .pf-sku tr.cat td{background:var(--surface);font-weight:800;font-size:11.5px}
+.pf-sku tr.sku td{color:var(--ink-2)}
+.pf-sku tr.sku td:first-child{padding-left:26px}
 .pf-sku tr.tot td{font-weight:800;border-top:2px solid var(--hairline);border-bottom:none;font-size:12.5px}
 .pf-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0}
 .pf-ins{margin:0;padding-left:18px}
@@ -2747,28 +2749,24 @@ function pfColor(i){
   return `hsl(${h},${s}%,${l}%)`;
 }
 function pfDayData(ds){
-  const d=pfDays()[ds]; if(!d)return null;
-  const all=[];
-  Object.keys(d.categories).forEach(c=>{
-    (d.categories[c].skus||[]).forEach(s=>all.push({cat:c,label:s.label,orders:s.orders,qty:s.qty,revenue:s.revenue,profit:s.profit}));
-  });
-  all.sort((a,b)=>b.profit-a.profit);
-  const colorOf=new Map();
-  all.forEach((s,i)=>colorOf.set(s.cat+'|'+s.label,pfColor(i)));
-  return {d:d,all:all,colorOf:colorOf};
+  return pfDays()[ds]||null;
 }
 function openProfitDay(ds){
-  const info=pfDayData(ds); if(!info)return;
-  const d=info.d, all=info.all;
+  const d=pfDayData(ds); if(!d)return;
   pfCurDay=ds;
   const wd=['周日','周一','周二','周三','周四','周五','周六'][new Date(ds+'T00:00:00').getDay()];
   const rate=d.revenue?d.profit/d.revenue*100:0, aov=d.orders?d.revenue/d.orders:0;
 
-  // 每个 SKU 都单独成一个扇区（不做"其他"合并），两张饼图与表格颜色一一对应
-  const pieLabels=all.map(s=>s.label);
-  const pieC=all.map(s=>info.colorOf.get(s.cat+'|'+s.label));
-  const pieOrders=all.map(s=>s.orders);
-  const pieProfit=all.map(s=>s.profit);
+  // 饼图只按「品类」聚合（曾生 2026-09-10 要求）；SKU 明细仍保留在下方表格
+  const cats=Object.keys(d.categories).map(c=>{
+    const v=d.categories[c]||{};
+    return {cat:c,orders:v.orders||0,qty:v.qty||0,revenue:v.revenue||0,profit:v.profit||0};
+  }).sort((a,b)=>b.profit-a.profit);
+  const catColor=new Map(); cats.forEach((x,i)=>catColor.set(x.cat,pfColor(i)));
+  const pieLabels=cats.map(x=>x.cat);
+  const pieC=cats.map(x=>catColor.get(x.cat));
+  const pieOrders=cats.map(x=>x.orders);
+  const pieProfit=cats.map(x=>x.profit);
 
   let h=`<div class="pf-sheet-top">
     <div><b>${ds} ${wd}</b><span>来源：${pfEsc((d.sources||[]).join('、')||'—')} · 已剔除已取消订单 ${d.cancelled||0} 单</span></div>
@@ -2781,20 +2779,20 @@ function openProfitDay(ds){
     <div><div class="l">利润率 · 客单价</div><div class="v">${rate.toFixed(1)}% · ${pfMoney(aov)}</div></div>
   </div>`;
 
-  h+=`<div class="pf-sub">🥧 销量与利润占比（按 SKU）</div><div class="pf-2col">
+  h+=`<div class="pf-sub">🥧 销量与利润占比（按品类）</div><div class="pf-2col">
     <div class="pf-piebox"><div class="t">销量占比（按订单数）</div><div class="h"><canvas id="pfPie1"></canvas></div></div>
     <div class="pf-piebox"><div class="t">利润占比（元）</div><div class="h"><canvas id="pfPie2"></canvas></div></div>
   </div>`;
 
-  h+=`<div class="pf-sub">📋 SKU 明细 <small style="font-weight:700;color:var(--ink-2)">颜色对应上方饼图</small></div><div style="overflow-x:auto"><table class="pf-sku"><thead><tr>
+  h+=`<div class="pf-sub">📋 品类 / SKU 明细 <small style="font-weight:700;color:var(--ink-2)">圆点=品类，颜色对应上方饼图</small></div><div style="overflow-x:auto"><table class="pf-sku"><thead><tr>
     <th>品类 / SKU</th><th style="text-align:right">订单</th><th style="text-align:right">件/卷</th>
     <th style="text-align:right">销售额</th><th style="text-align:right">利润</th>
     <th style="text-align:right">销量%</th><th style="text-align:right">利润%</th></tr></thead><tbody>`;
   Object.keys(d.categories).forEach(c=>{
     const v=d.categories[c];
-    h+=`<tr class="cat"><td>${pfEsc(c)}</td><td class="num">${v.orders}</td><td class="num">${v.qty}</td><td class="num">${pfMoney(v.revenue)}</td><td class="num">${pfMoney(v.profit)}</td><td class="num">${d.orders?(v.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(v.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
+    h+=`<tr class="cat"><td><span class="pf-dot" style="background:${catColor.get(c)||'#cfcfd6'}"></span>${pfEsc(c)}</td><td class="num">${v.orders}</td><td class="num">${v.qty}</td><td class="num">${pfMoney(v.revenue)}</td><td class="num">${pfMoney(v.profit)}</td><td class="num">${d.orders?(v.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(v.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
     (v.skus||[]).forEach(s=>{
-      h+=`<tr><td><span class="pf-dot" style="background:${info.colorOf.get(c+'|'+s.label)}"></span>${pfEsc(s.label)}</td><td class="num">${s.orders}</td><td class="num">${s.qty}</td><td class="num">${pfMoney(s.revenue)}</td><td class="num">${pfMoney(s.profit)}</td><td class="num">${d.orders?(s.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(s.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
+      h+=`<tr class="sku"><td>${pfEsc(s.label)}</td><td class="num">${s.orders}</td><td class="num">${s.qty}</td><td class="num">${pfMoney(s.revenue)}</td><td class="num">${pfMoney(s.profit)}</td><td class="num">${d.orders?(s.orders/d.orders*100).toFixed(1):'0.0'}%</td><td class="num">${d.profit?(s.profit/d.profit*100).toFixed(1):'0.0'}%</td></tr>`;
     });
   });
   h+=`<tr class="tot"><td>当日合计</td><td class="num">${d.orders}</td><td class="num">${d.qty}</td><td class="num">${pfMoney(d.revenue)}</td><td class="num">${pfMoney(d.profit)}</td><td class="num">100.0%</td><td class="num">100.0%</td></tr></tbody></table></div>`;
