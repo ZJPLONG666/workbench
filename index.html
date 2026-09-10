@@ -331,7 +331,7 @@ input,select,textarea{outline:none;font-family:inherit}
 .flat-app-ico svg{stroke:var(--tile-ink)!important;stroke-width:1.8}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
-.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
+.i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
 .i-radar{background:var(--c-mint)}
 .flat-app-ico:hover{transform:scale(1.07)}
 .flat-app-name{font-size:12px;font-weight:700;color:var(--ink)}
@@ -595,17 +595,6 @@ html[data-theme="dark"] .shop-select-item.selected{background:rgba(245,213,74,.2
 .issue-ctx-item:hover{background:var(--accent,#FFD66B)}
 .issue-ctx-item .k{font-size:11px;font-weight:700;opacity:.55}
 .issue-ctx-item.disabled{opacity:.4;cursor:not-allowed}
-/* ===== 爆品时间表 ===== */
-.baopin-tools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:0;flex-wrap:wrap}
-.baopin-table-scroll{overflow-x:auto;border-radius:var(--r-xl);border:1.5px solid var(--line);background:var(--card-bg);margin-top:14px}
-.baopin-table{border-collapse:collapse;width:100%;font-size:14px}
-.baopin-table th{background:var(--surface,#f2f2f4);text-align:left;padding:12px 14px;font-weight:700;color:var(--ink);border-bottom:1.5px solid var(--line);white-space:nowrap}
-.baopin-table td{padding:6px 14px;border-bottom:1px solid var(--line);vertical-align:top}
-.baopin-table tr:hover td{background:rgba(0,0,0,.03)}
-.col-month{width:96px;text-align:center;font-weight:700;color:var(--ink-2);white-space:nowrap}
-.baopin-input{width:100%;min-width:0;border:1px solid transparent;background:transparent;padding:9px 10px;border-radius:var(--r-sm);font-size:14px;color:var(--ink);outline:none;font-family:inherit;cursor:text;resize:vertical;line-height:1.5}
-.baopin-input:focus{border-color:var(--accent,#FFD66B);background:#fff;box-shadow:0 0 0 3px rgba(255,214,107,.25)}
-.baopin-input::placeholder{color:#bbb}
 .issue-ctx-item.disabled:hover{background:transparent}
 .cell-thumb{max-width:46px;max-height:46px;border-radius:6px;display:block;margin-top:3px;border:1px solid var(--line)}
 .issue-empty{text-align:center;padding:48px 0;color:var(--ink-2);font-weight:700;font-size:14px}
@@ -675,7 +664,7 @@ html[data-theme="dark"] .kpi .kv,html[data-theme="dark"] .kpi .kl{color:var(--in
 .anm{font-size:11px;font-weight:600;color:var(--ink-2)}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
-.i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
+.i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
 .i-radar{background:var(--c-mint)}
 
 /* 爆品雷达 iframe 视图 */
@@ -787,7 +776,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <a data-nav="dashboard"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-6M11 19v-9M15.5 19v-4M20 19v-8"/></svg>数据</a>
     <a data-nav="accounts"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg>账号</a>
     <a data-nav="issues"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg>问题</a>
-    <a data-nav="baopin"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg>爆品</a>
     <a data-nav="profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg>利润</a>
     <a data-nav="radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg>雷达</a>
   </nav>
@@ -819,7 +807,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="chip" onclick="openApp('calendar')"><span class="ci" style="background:var(--c-rose)"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2.5"/><path d="M3 9.5h18M8 3v4M16 3v4"/></svg></span>日程</div>
       <div class="chip" onclick="openApp('dashboard')"><span class="ci" style="background:var(--c-mint)"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-6M11 19v-9M15.5 19v-4M20 19v-8"/></svg></span>数据</div>
       <div class="chip" onclick="openApp('accounts')"><span class="ci" style="background:var(--c-lilac)"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></span>账号</div>
-      <div class="chip" onclick="openApp('baopin')"><span class="ci" style="background:var(--c-peach)"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></span>爆品</div>
       <div class="chip" onclick="openApp('profit')"><span class="ci" style="background:var(--c-lime)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></span>利润</div>
       <div class="chip" onclick="openApp('radar')"><span class="ci" style="background:var(--c-mint)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></span>雷达</div>
     </div>
@@ -850,7 +837,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           <div class="app" onclick="openApp('accounts')"><div class="aico i-acc"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></div><span class="anm">账号</span></div>
           <div class="app" onclick="openApp('sync')"><div class="aico i-sync"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16"/><path d="M20 20v-4h-4"/></svg></div><span class="anm">同步</span></div>
           <div class="app" onclick="openApp('issues')"><div class="aico i-iss"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></div><span class="anm">问题订单</span></div>
-          <div class="app" onclick="openApp('baopin')"><div class="aico i-bao"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></div><span class="anm">爆品时间表</span></div>
           <div class="app" onclick="openApp('profit')"><div class="aico i-profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></div><span class="anm">每日利润</span></div>
           <div class="app" onclick="openApp('radar')"><div class="aico i-radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></div><span class="anm">爆品雷达</span></div>
           <div class="app" onclick="toggleWB(true)"><div class="aico i-wb"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10h7M8.5 13h4"/></svg></div><span class="anm">小策</span></div>
@@ -1003,18 +989,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div id="issuesWrap"></div>
   </section>
 
-  <!-- ============ 爆品时间表 ============ -->
-  <section id="view-baopin" class="view">
-    <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <h2 class="section-h flex-1">🔥 爆品时间表</h2>
-      <div class="baopin-tools">
-        <button class="btn-ghost" onclick="openApp('radar')">📡 打开爆品雷达</button>
-        <button class="btn-ghost" onclick="baopinExport()">⬇ 导出 Excel</button>
-      </div>
-    </div>
-    <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">在「爆品名称」列直接填写，自动保存并同步云端 · 一个月有多个爆品请换行分隔 · 之后问 WorkBuddy「X月有什么爆品」即可列举</p>
-    <div id="baopinWrap"></div>
-  </section>
 
   <!-- ============ 每日利润 ============ -->
   <section id="view-profit" class="view">
@@ -1081,7 +1055,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       </div>
       <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">📱💻 多设备共用同一份数据：口令已内置，手机 / 电脑打开同一网址即自动互通。想换成自己的口令，改上方输入框再点「连接」（每台设备填同一个即可）。</p>
       <p class="text-xs mt-3 font-black" id="syncStatus" style="color:var(--ink-2)"></p>
-      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：口令仅存本机浏览器；数据存放在你自己的 Supabase 项目里。以后问我「8月有什么爆品」，把上方口令发我即可。</p>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：口令仅存本机浏览器；数据存放在你自己的 Supabase 项目里。</p>
     </div>
     <div class="card p-6">
       <h3 class="font-black mb-3">📲 添加到主屏幕（像 App 一样用）</h3>
@@ -1216,7 +1190,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dbtn" data-nav="dashboard" title="数据看板"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-6M11 19v-9M15.5 19v-4M20 19v-8"/></svg></button>
   <button class="dbtn" data-nav="accounts" title="账号管理"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></button>
   <button class="dbtn" data-nav="issues" title="问题订单"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></button>
-  <button class="dbtn" data-nav="baopin" title="爆品时间表"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></button>
   <button class="dbtn" data-nav="profit" title="每日利润"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></button>
 </nav>
 
@@ -1345,8 +1318,6 @@ function seed(){
 }
 if(!DB||!DB.seeded)seed();
 if(!DB.issues)DB.issues=[];
-if(!DB.baopin)DB.baopin=defaultBaopin();
-function defaultBaopin(){return Array.from({length:12},(_,i)=>({month:i+1,items:''}));}
 /* 旧数据迁移：补齐看板字段 */
 DB.tasks.forEach((t,i)=>{
   if(!t.column)t.column=t.status==='done'?'done':'work';
@@ -1368,8 +1339,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin','radar','profit'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表',radar:'爆品雷达',profit:'每日利润'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','radar','profit'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',radar:'爆品雷达',profit:'每日利润'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1388,7 +1359,6 @@ function openApp(name){
   if(name==='accounts')renderAccounts();
   if(name==='sync')renderSync();
   if(name==='issues')renderIssues();
-  if(name==='baopin')renderBaopin();
   if(name==='radar')loadRadar();
   if(name==='profit')renderProfit();
 }
@@ -1400,38 +1370,6 @@ function loadRadar(force){
   if(force||!f.getAttribute('src'))f.setAttribute('src','baopin-radar.html?d='+stamp+(force?('&t='+Date.now()):''));
 }
 function radarReload(){loadRadar(true);}
-/* ===================== 爆品时间表 ===================== */
-function renderBaopin(){
-  const wrap=document.getElementById('baopinWrap'); if(!wrap)return;
-  const rows=DB.baopin||[];
-  let html='<div class="baopin-table-scroll"><table class="baopin-table"><thead><tr><th class="col-month">月份</th><th>爆品名称</th></tr></thead><tbody>';
-  html+=rows.map((r,i)=>{
-    const m=r.month+'月';
-    return `<tr data-i="${i}"><td class="col-month">${m}</td>`
-      +`<td><textarea class="baopin-input" data-i="${i}" rows="${Math.max(2,(r.items||'').split('\n').length)}" placeholder="填写 ${m} 爆品，多个换行">${esc(r.items)}</textarea></td></tr>`;
-  }).join('');
-  html+='</tbody></table></div>';
-  wrap.innerHTML=html;
-  const tb=wrap.querySelector('tbody');
-  if(tb)tb.addEventListener('input',onBaopinInput);
-}
-function onBaopinInput(e){
-  const t=e.target; if(!t.classList.contains('baopin-input'))return;
-  const i=+t.dataset.i; if(!DB.baopin[i])return;
-  DB.baopin[i].items=t.value; save();
-}
-function baopinExport(){
-  const rows=DB.baopin||[];
-  let csv='月份,爆品名称\n';
-  rows.forEach(r=>{
-    const items=(r.items||'').split('\n').map(x=>x.trim()).filter(Boolean).join('、');
-    csv+=`${r.month}月,${items}\n`;
-  });
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='爆品时间表_'+todayStr()+'.csv'; a.click();
-  toast('已导出 CSV');
-}
 /* ===================== 问题订单 ===================== */
 const ISSUE_FIELDS=['客户名','卖出号','采购单号','物流单号','问题','怎么处理','商家回复状态','目前进度更新','客诉时间','客户问题截图'];
 const ISSUE_DEF_W=[120,130,140,140,140,150,140,150,120,160];
@@ -2287,14 +2225,14 @@ function importData(e){
     const d=(raw&&raw.__wb_backup__&&raw.db)?raw.db:raw;
     if(d&&d.tasks&&d.sales&&d.notes){
       DB=normalizeDB(d);DB.seeded=true;save();
-      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
-      toast('导入成功，已恢复全部数据 ✅ 任务 '+DB.tasks.length+' 条 · 爆品 '+DB.baopin.filter(x=>x.items&&x.items.trim()).length+' 月 · 订单 '+DB.issues.length+' 条');
+      renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();refreshCurrentView();
+      toast('导入成功，已恢复全部数据 ✅ 任务 '+DB.tasks.length+' 条 · 订单 '+DB.issues.length+' 条');
       if(syncRoom)sbPush(false); // 恢复后立即将正确数据推上云端（以导入文件为准，不预合并）
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
 }
-// 字段兜底：全字段保留，绝不丢弃 baopin(爆品)/issues(订单) 等任何已有字段
+// 字段兜底：全字段保留，绝不丢弃 issues(订单) 等任何已有字段
 function normalizeDB(d){
   const known={meta:{},tasks:[],sales:[],notes:[],accounts:[],products:[],shops:[],baopin:[],issues:[]};
   const out=Object.assign({},known,DB,d); // DB 兜底，导入 d 优先生效
@@ -2559,7 +2497,7 @@ function mergeDB(local, remote){
     });
     out[k]=applyTomb(k,[...map.values()],delSet);
   });
-  // products 按 shop+name、baopin 按 month 合并，同样剔除墓碑
+  // products 按 shop+name 合并，同样剔除墓碑
   ['products','baopin'].forEach(k=>{
     const rm=remote[k]||[], lm=local[k]||[];
     const keyOf=x=>recKey(k,x);
@@ -2955,7 +2893,6 @@ function refreshCurrentView(){
   if(v==='dashboard')renderDashboard();
   if(v==='accounts')renderAccounts();
   if(v==='issues')renderIssues();
-  if(v==='baopin')renderBaopin();
   if(v==='profit')renderProfit(true);
 }
 async function sbConnect(){
