@@ -539,7 +539,10 @@ html[data-theme="dark"] .home-pill.dark-pill{border:1px solid rgba(255,255,255,.
 
 /* ===================== 响应式 ===================== */
 @media(max-width:640px){
-  .dock{padding:8px 10px;gap:4px}
+  /* 7 个导航按钮在窄屏要放得下：缩按钮 + 缩间距，并加 max-width 兜底防溢出 */
+  .dock{padding:8px 10px;gap:3px;max-width:calc(100vw - 12px)}
+  .dock .dbtn{width:42px;height:42px}
+  .dock .dbtn svg{width:18px;height:18px}
   .dock-btn{width:42px;height:42px;font-size:17px}
   .dock-wb{width:52px;height:52px;margin-top:-26px}
   header{max-width:100%}
@@ -1193,6 +1196,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dbtn" data-nav="accounts" title="账号管理"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></button>
   <button class="dbtn" data-nav="issues" title="问题订单"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></button>
   <button class="dbtn" data-nav="profit" title="每日利润"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></button>
+  <button class="dbtn" data-nav="radar" title="爆品雷达"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></button>
 </nav>
 
 <!-- ============ WorkBuddy 右侧 50% 透明度悬浮弹窗 ============ -->
