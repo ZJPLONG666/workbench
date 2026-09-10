@@ -1290,39 +1290,23 @@ function applyTomb(col,arr,delSet){ return (arr||[]).filter(x=> !delSet.has(col+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function todayStr(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
-/* 首次运行：生成示例数据（录入真实数据后自然覆盖） */
+/* 首次运行：仅初始化空数据结构。
+   注意：早期版本会在这里注入 5 条「示例任务」，其中「晚上 8 点发草莓熊笔记」
+   带有 due=T20:00，会在每天 20:00 触发到点提醒；示例任务已被移除，避免误报。 */
 function seed(){
-  DB={tasks:[],sales:[],notes:[],issues:[],products:[
-    {shop:'石头姐的店',name:'便携榨汁杯'},{shop:'石头姐的店',name:'ins风收纳盒'},{shop:'石头姐的店',name:'懒人抹布'},
-    {shop:'益力多的店',name:'草莓熊玩偶'},{shop:'益力多的店',name:'可爱发夹套装'},{shop:'益力多的店',name:'少女心水杯'},
-  ],seeded:true,deleted:[],meta:{updatedAt:Date.now()}};
-  const today=new Date();
-  for(let i=29;i>=0;i--){
-    const d=new Date(today);d.setDate(d.getDate()-i);const ds=todayStr(d);
-    DB.products.forEach((p,pi)=>{
-      const base=8+pi*3+Math.sin(i/4+pi)*4;
-      const qty=Math.max(0,Math.round(base+Math.random()*8+i*0.35));
-      if(qty>0)DB.sales.push({id:uid()+pi+i,date:ds,shop:p.shop,product:p.name,qty,revenue:Math.round(qty*(19.9+pi*6.5)*100)/100});
-    });
-    ACCOUNTS.forEach(a=>{
-      const n=a.role==='主账号'?3:2;
-      for(let k=0;k<n;k++){
-        if(Math.random()<0.75)DB.notes.push({id:uid()+a.id+k+i,date:ds,account:a.name,title:a.name+' 笔记'+(k+1),
-          reads:Math.round(300+Math.random()*2200+i*15),likes:Math.round(20+Math.random()*180+i*2),collects:Math.round(10+Math.random()*120+i)});
-      }
-    });
-  }
-  const t=todayStr();
-  DB.tasks=[
-    {id:uid()+'a',title:'拍 3 组榨汁杯实况图',note:'自然光，突出便携',status:'doing',column:'work',date:t,dueDate:t.slice(5),assignee:'老婆',priority:'P1',order:0,style:null},
-    {id:uid()+'b',title:'1688 跟进昨日订单发货',note:'',status:'todo',column:'work',date:t,dueDate:t.slice(5),assignee:'曾生',priority:'P0',order:1,style:null},
-    {id:uid()+'c',title:'晚上 8 点发草莓熊笔记',note:'标题用新测的钩子',status:'todo',column:'work',date:t,dueDate:t.slice(5),due:`${t}T20:00`,assignee:'老婆',priority:'P2',order:2,style:null},
-    {id:uid()+'d',title:'复盘上周低粉爆款榜单',note:'收藏≥500 的筛出来',status:'done',column:'done',date:t,dueDate:t.slice(5),assignee:'曾生',priority:'P2',order:0,style:null},
-    {id:uid()+'e',title:'周末陪家人逛公园',note:'',status:'todo',column:'life',date:t,dueDate:t.slice(5),assignee:'老婆',priority:'P3',order:0,style:null},
-  ];
+  DB={tasks:[],sales:[],notes:[],issues:[],products:[],seeded:true,deleted:[],meta:{updatedAt:Date.now()}};
   save();
 }
 if(!DB||!DB.seeded)seed();
+/* 一次性清理：移除历史版本遗留的示例任务（含带 due 的「草莓熊笔记」提醒），并打墓碑跨端同步删除 */
+(function purgeDemoTasks(){
+  const DEMO_TITLES=['拍 3 组榨汁杯实况图','1688 跟进昨日订单发货','晚上 8 点发草莓熊笔记','复盘上周低粉爆款榜单','周末陪家人逛公园'];
+  const hit=(DB.tasks||[]).filter(t=>t&&DEMO_TITLES.includes((t.title||'').trim()));
+  if(!hit.length)return;
+  hit.forEach(t=>addTomb('tasks',t.id));
+  DB.tasks=(DB.tasks||[]).filter(t=>!hit.some(h=>h.id===t.id));
+  save();
+})();
 if(!DB.issues)DB.issues=[];
 /* 旧数据迁移：补齐看板字段 */
 DB.tasks.forEach((t,i)=>{
