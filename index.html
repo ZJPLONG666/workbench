@@ -937,21 +937,17 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <section id="view-sync" class="view">
     <h2 class="section-h mb-5">多设备同步</h2>
     <div class="card p-6 mb-4">
-      <h3 class="font-black mb-2">☁️ GitHub 云端同步</h3>
-      <p class="text-sm mb-4 leading-relaxed font-semibold" style="color:var(--ink-2)">用 <b style="color:var(--ink)">GitHub Gist</b> 做云端同步（每次保存 + 每15秒自动同步）。<b>首次使用</b>：到 GitHub 生成一个 <b style="color:var(--ink)">Personal Access Token</b>（只需勾 gist 权限），粘贴到下方，点「连接」会自动建一个 Gist 存放数据。</p>
+      <h3 class="font-black mb-2">☁️ 云端同步</h3>
+      <p class="text-sm mb-4 leading-relaxed font-semibold" style="color:var(--ink-2)">数据存在 <b style="color:var(--ink)">Supabase 云端</b>（国内可稳定访问，每次保存 + 每 8 秒自动同步）。<b style="color:var(--ink)">换设备零配置</b>：任何设备打开本网址就自动同步，不用再填 Token 或 Gist ID。</p>
       <div class="flex gap-2 flex-wrap" style="align-items:center">
-        <input class="field" type="password" style="max-width:340px" id="ghTokenInput" placeholder="粘贴 GitHub Token（ghp_... 或 github_pat_...）">
-        <button class="pillbtn dark" onclick="gistConnect()">连接</button>
-        <button class="pillbtn" onclick="gistPull(true)">立即同步</button>
-        <button class="pillbtn" onclick="gistDisconnect()" style="color:#dc2626">断开</button>
+        <input class="field" style="max-width:320px" id="roomInput" placeholder="同步口令（同口令的设备共用一份数据）">
+        <button class="pillbtn dark" onclick="sbConnect()">连接</button>
+        <button class="pillbtn" onclick="quickRefresh()">立即同步</button>
+        <button class="pillbtn" onclick="sbDisconnect()" style="color:#dc2626">断开</button>
       </div>
-      <div class="flex gap-2 flex-wrap mt-3" style="align-items:center">
-        <input class="field" style="max-width:300px" id="gistIdInput" placeholder="Gist ID（连接后自动填充，可复制给我以便帮你查询）">
-        <button class="pillbtn" onclick="copyGistId()">复制 ID</button>
-      </div>
-      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">📱💻 多设备共用同一份数据：把另一台设备的 Gist ID 填到上方输入框，点「连接」即可加入同一云端同步。</p>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">📱💻 多设备共用同一份数据：口令已内置，手机 / 电脑打开同一网址即自动互通。想换成自己的口令，改上方输入框再点「连接」（每台设备填同一个即可）。</p>
       <p class="text-xs mt-3 font-black" id="syncStatus" style="color:var(--ink-2)"></p>
-      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：Token 仅存本机浏览器；数据写入你的 Gist。以后问我「8月有什么爆品」，把上方 Gist ID 发我即可。</p>
+      <p class="text-xs mt-2 font-semibold" style="color:var(--ink-2)">说明：口令仅存本机浏览器；数据存放在你自己的 Supabase 项目里。以后问我「8月有什么爆品」，把上方口令发我即可。</p>
     </div>
     <div class="card p-6">
       <h3 class="font-black mb-3">📲 添加到主屏幕（像 App 一样用）</h3>
@@ -979,7 +975,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
         <button class="pillbtn" onclick="exportData()">💾 导出整库备份</button>
         <button class="pillbtn" onclick="document.getElementById('importFile').click()">📂 导入备份</button>
       </div>
-      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，先导入备份再连同步码。</p>
+      <p class="text-xs mt-3 font-semibold" style="color:var(--ink-2)">建议：每周导出一次 .json 备份；换新手机/电脑时，打开同一网址会自动同步，也可先导入备份再填同步口令。</p>
     </div>
   </section>
 </main>
@@ -1116,10 +1112,16 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
    数据层：localStorage 持久化 + 云同步
 ================================================================ */
 const DB_KEY='zengsheng_workbench_v1';
-const GH_API='https://api.github.com';
-const GIST_FILE='workbench-data.json';
+/* ==== 云同步后端：Supabase（国内可稳定访问）====
+   密钥是 Supabase 的公开 anon key，设计上就是给前端用的；数据隔离靠下面的「同步口令」 */
+const SB_URL='https://hnbsoqxtwisesbatkmpr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuYnNvcXh0d2lzZXNiYXRrbXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjcxMjIsImV4cCI6MjEwNDYwMzEyMn0.hFvJ2BGV2vloAADDPIA30OThP4Ta5LRmY7ngSLZNZqs';
+const SB_TABLE='workbench_sync';
+/* 同步口令：默认内置，任何设备打开本网址即自动互通、无需任何配置；可在设置页改成自己的 */
+const SB_ROOM_DEFAULT='13535754219zjp';
 /* 同步/界面状态变量：必须在使用它的函数之前声明，否则触发 TDZ ReferenceError */
-let ghToken=localStorage.getItem(DB_KEY+'_ghtoken')||'';let gistId=localStorage.getItem(DB_KEY+'_gistid')||'';
+let syncRoom=localStorage.getItem(DB_KEY+'_room');
+if(syncRoom===null) syncRoom=SB_ROOM_DEFAULT; // 未主动断开过 → 用内置口令（换设备零配置）
 let syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
 let _refreshing=false;
 let visListenerBound=false;
@@ -2125,7 +2127,7 @@ function renderSalesTable(){
 }
 function delSale(id){DB.sales=DB.sales.filter(x=>x.id!==id);addTomb('sales',id);save();renderDashboard();toast('已删除');}
 function exportData(){
-  // 全量导出整个工作台（任务/日历/销售/笔记/账号/同步码/设置）
+  // 全量导出整个工作台（任务/日历/销售/笔记/账号/同步口令/设置）
   const backup={__wb_backup__:true,version:1,exportedAt:Date.now(),db:DB};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -2142,7 +2144,7 @@ function importData(e){
       DB=normalizeDB(d);DB.seeded=true;save();
       renderDashboard();renderHome();renderKanban();renderCalendar();renderAccounts();renderIssues();renderBaopin();refreshCurrentView();
       toast('导入成功，已恢复全部数据 ✅ 任务 '+DB.tasks.length+' 条 · 爆品 '+DB.baopin.filter(x=>x.items&&x.items.trim()).length+' 月 · 订单 '+DB.issues.length+' 条');
-      if(gistId&&ghToken)gistPush(false); // 恢复后立即将正确数据推上云端（以导入文件为准，不预合并）
+      if(syncRoom)sbPush(false); // 恢复后立即将正确数据推上云端（以导入文件为准，不预合并）
     } else toast('文件格式不正确');
   }catch(err){toast('导入失败：'+err.message);}};
   r.readAsText(f);e.target.value='';
@@ -2280,7 +2282,9 @@ function simulateCrawl(){
 ================================================================ */
 const wbQuick=['今日任务','销量总结','笔记数据','账号概览','帮我分析','帮助'];
 document.getElementById('wbQuick').innerHTML=wbQuick.map(q=>`<button class="chipx" style="background:#fff" onclick="wbAsk('${q}')">${q}</button>`).join('');
-document.getElementById('wbFab').addEventListener('click',()=>toggleWB());
+/* 悬浮助手按钮已从界面移除，此处加空值保护：原先直接取 null 会抛错并污染控制台 */
+var _wbFab=document.getElementById('wbFab');
+if(_wbFab)_wbFab.addEventListener('click',()=>toggleWB());
 function toggleWB(force){
   const p=document.getElementById('wbPanel');
   const open=force!==undefined?force:!p.classList.contains('open');
@@ -2359,23 +2363,34 @@ function wbAnswer(q){
 function deltaTxt(cur,prev){const d=cur-prev;return d===0?'±0':d>0?'+'+d:''+d;}
 
 /* ================================================================
-   多设备云同步（同步码机制：同码设备自动互通）
-   GH_API/GIST_FILE 已在本 script 块顶部声明，避免 TDZ
+   多设备云同步（Supabase REST / PostgREST，同步口令机制：同口令设备自动互通）
+   SB_URL / SB_KEY / SB_TABLE 已在本 script 块顶部声明，避免 TDZ
 ================================================================ */
 syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
 
 function syncSchedulePush(){
-  if(!gistId)return;
+  if(!syncRoom)return;
   clearTimeout(syncPushTimer);
-  syncPushTimer=setTimeout(gistPush,1500);
+  syncPushTimer=setTimeout(()=>{sbPush();},1500);
 }
-async function gistPush(merge=true){
-  if(!ghToken||!gistId||syncBusy)return;
+// Supabase 请求头：apikey 与 Bearer 都带上（PostgREST 两种都认）
+function sbHeaders(extra){
+  const h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  if(extra){for(const k in extra)h[k]=extra[k];}
+  return h;
+}
+async function sbPush(merge=true){
+  if(!syncRoom||syncBusy)return;
   syncBusy=true;
   try{
     // 推送前先合并云端，避免覆盖另一端的最新改动（解决双向不同步 / 互覆写丢数据）
-    if(merge){ try{ await gistPull(false); }catch(e){} }
-    const r=await fetch(`${GH_API}/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+ghToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
+    if(merge){ try{ await sbPull(false); }catch(e){} }
+    const body=JSON.stringify([{room:syncRoom,data:DB,updated_at:new Date().toISOString()}]);
+    const r=await fetch(`${SB_URL}/rest/v1/${SB_TABLE}?on_conflict=room`,{
+      method:'POST',
+      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body:body
+    });
     if(!r.ok)throw new Error('HTTP '+r.status);
     syncLastAt=Date.now();renderSyncStatus();
   }catch(e){/* 离线时静默失败，下次保存自动重试 */}
@@ -2417,32 +2432,36 @@ function mergeDB(local, remote){
   out.deleted=[...delSet]; // 墓碑随合并累积，确保删除跨端永久生效
   return out;
 }
-async function gistPull(manual){
-  if(!gistId){if(manual)toast('请先连接 GitHub 同步');return;}
-  try{
-    const url=`${GH_API}/gists/${gistId}`+'?_='+Date.now();
-    const r=await fetch(url, ghToken?{headers:{'Authorization':'Bearer '+ghToken},cache:'no-store'}:{cache:'no-store'});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    const fc=j.files&&j.files[GIST_FILE]?j.files[GIST_FILE].content:null;
-    if(!fc)return;
-    const remote=JSON.parse(fc);
-    const before=JSON.stringify(DB);
-    const merged=mergeDB(DB, remote);
-    const after=JSON.stringify(merged);
-    if(after!==before){
-      DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); refreshCurrentView(); syncSchedulePush();
-      if(manual)toast('已同步最新数据');
-    }else if(manual){toast('本地已是最新');}
+async function sbPull(manual){
+  if(!syncRoom){ if(manual)toast('请先填写同步口令'); return false; }
+  const url=`${SB_URL}/rest/v1/${SB_TABLE}?room=eq.${encodeURIComponent(syncRoom)}&select=data`;
+  const r=await fetch(url,{headers:sbHeaders(),cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const rows=await r.json();
+  if(!Array.isArray(rows)||!rows.length){
+    // 云端还没有这个口令的数据 → 用本机数据初始化，之后其它设备打开即自动拉取
+    if(manual)toast('云端暂无数据，已用本机数据初始化 ☁️');
+    await sbPush(false);
     syncLastAt=Date.now();renderSyncStatus();
-  }catch(e){if(manual)toast('同步失败，请检查网络');}
+    return true;
+  }
+  const remote=rows[0].data;
+  if(!remote||typeof remote!=='object')return false;
+  const before=JSON.stringify(DB);
+  const merged=mergeDB(DB, remote);
+  if(JSON.stringify(merged)!==before){
+    DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); refreshCurrentView(); syncSchedulePush();
+    if(manual)toast('已同步最新数据');
+  }else if(manual){toast('本地已是最新');}
+  syncLastAt=Date.now();renderSyncStatus();
+  return true;
 }
 // 顶部刷新按钮：主动拉取云端最新并刷新当前视图（无需进设置页，跨端删除/改动即时可见）
 async function quickRefresh(){
   const btn=document.getElementById('refreshBtn');
   if(!btn||_refreshing)return;
   _refreshing=true; btn.classList.add('spin');
-  try{ await gistPull(true); }catch(e){}
+  try{ await sbPull(true); }catch(e){ toast('同步失败，请检查网络'); }
   setTimeout(()=>{ btn.classList.remove('spin'); _refreshing=false; },300);
 }
 function refreshCurrentView(){
@@ -2454,65 +2473,50 @@ function refreshCurrentView(){
   if(v==='dashboard')renderDashboard();
   if(v==='accounts')renderAccounts();
 }
-async function gistConnect(){
-  const tok=document.getElementById('ghTokenInput').value.trim();
-  const gidInp=(document.getElementById('gistIdInput').value||'').trim();
-  if(!tok){toast('请先填写 GitHub Token（需 gist 权限）');return;}
-  ghToken=tok;localStorage.setItem(DB_KEY+'_ghtoken',tok);
-  toast('正在连接 GitHub…');
+async function sbConnect(){
+  const inp=document.getElementById('roomInput');
+  const room=((inp&&inp.value)||'').trim();
+  if(!room){toast('请先填写同步口令');return;}
+  syncRoom=room;localStorage.setItem(DB_KEY+'_room',room);
+  toast('正在连接云端…');
   try{
-    if(gidInp){
-      const r=await fetch(`${GH_API}/gists/${gidInp}`,{headers:{'Authorization':'Bearer '+tok}});
-      if(!r.ok)throw new Error('Gist 不存在或无权限 (HTTP '+r.status+')');
-      gistId=gidInp;localStorage.setItem(DB_KEY+'_gistid',gistId);
-      await gistPull(true);
-      toast('☁️ 已加入云端同步');
-    }else if(!gistId){
-      const r=await fetch(`${GH_API}/gists`,{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({public:true,files:{[GIST_FILE]:{content:JSON.stringify(DB)}}})});
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      const j=await r.json(); gistId=j.id;
-      localStorage.setItem(DB_KEY+'_gistid',gistId);
-      toast('☁️ 已创建云端同步');
-    }else{
-      await gistPull(true);
-    }
+    await sbPull(true);            // 拉取云端 + 双向安全合并
     startSyncLoop();renderSync();
-  }catch(e){toast('连接失败：'+((e&&e.message)||e)+'（Token 是否有 gist 权限？）');}
+    toast('☁️ 已连接云端同步');
+  }catch(e){toast('连接失败：'+((e&&e.message)||e));}
 }
-function gistDisconnect(){
-  gistId='';ghToken='';localStorage.removeItem(DB_KEY+'_gistid');localStorage.removeItem(DB_KEY+'_ghtoken');
+function sbDisconnect(){
+  syncRoom='';localStorage.setItem(DB_KEY+'_room',''); // 存空串=主动断开，刷新后不回落到内置口令
   clearInterval(syncTimer);renderSync();
   toast('已断开云端同步（本机数据保留）');
 }
 function startSyncLoop(){
   clearInterval(syncTimer);
   // 每 8 秒轮询（前台）；切回/聚焦/恢复/联网时立即拉取，保证另一端编辑即时可见
-  syncTimer=setInterval(()=>{if(!document.hidden)gistPull();},8000);
+  syncTimer=setInterval(()=>{if(!document.hidden&&syncRoom)sbPull().catch(()=>{});},8000);
   if(!visListenerBound){
     visListenerBound=true;
-    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && gistId) gistPull(); });
-    window.addEventListener('focus',()=>{ if(gistId) gistPull(); });
-    window.addEventListener('online',()=>{ if(gistId){ gistPull(); gistPush(); } });
-    window.addEventListener('pageshow',()=>{ if(gistId) gistPull(); }); // iOS 主屏 PWA 重新回到前台
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && syncRoom) sbPull().catch(()=>{}); });
+    window.addEventListener('focus',()=>{ if(syncRoom) sbPull().catch(()=>{}); });
+    window.addEventListener('online',()=>{ if(syncRoom){ sbPull().catch(()=>{}); sbPush(); } });
+    window.addEventListener('pageshow',()=>{ if(syncRoom) sbPull().catch(()=>{}); }); // iOS 主屏 PWA 重新回到前台
   }
 }
 function renderSync(){
-  const inp=document.getElementById('ghTokenInput');
-  if(inp)inp.value=ghToken;
-  const gi=document.getElementById('gistIdInput');
-  if(gi)gi.value=gistId;
+  const inp=document.getElementById('roomInput');
+  if(inp)inp.value=syncRoom;
   renderSyncStatus();
 }
-function copyGistId(){
-  if(!gistId){toast('尚未连接，无 Gist ID 可复制');return;}
+function copyRoom(){
+  if(!syncRoom){toast('尚未连接，无同步口令可复制');return;}
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(gistId).then(()=>toast('已复制 Gist ID 📋'),()=>toast('复制失败，请手动长按选择'));
+    navigator.clipboard.writeText(syncRoom).then(()=>toast('已复制同步口令 📋'),()=>toast('复制失败，请手动长按选择'));
   }else{toast('请手动长按输入框选择复制');}
 }
 function renderSyncStatus(){
   const el=document.getElementById('syncStatus');if(!el)return;
-  el.textContent=gistId
-    ?`☁️ 已连接 GitHub 同步 · Gist ${gistId} · 最后同步 ${syncLastAt?new Date(syncLastAt).toLocaleTimeString('zh-CN'):'—'}`
+  el.textContent=syncRoom
+    ?`☁️ 已连接云端同步 · 口令「${syncRoom}」 · 最后同步 ${syncLastAt?new Date(syncLastAt).toLocaleTimeString('zh-CN'):'—'}`
     :'未连接云端同步，数据仅保存在本机';
 }
 
@@ -2599,7 +2603,7 @@ function toggleFeishu(){
   toast(on?'已开启飞书同步（云端 Worker 下次运行约 1 分钟内生效）':'已关闭飞书同步');
 }
 async function refreshFeishuStatus(){
-  await gistPull(true);
+  await sbPull(true).catch(()=>{});
   renderFeishuStatus();
   toast('已刷新飞书同步状态');
 }
@@ -2635,7 +2639,7 @@ function startReminderLoop(){
 renderHeader();renderHome();
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
-if(gistId){stampRecords();startSyncLoop();gistPull();}
+if(syncRoom){stampRecords();startSyncLoop();sbPull().catch(()=>{});}  // 有口令即自动连云端（换设备零配置）
 checkReminders();startReminderLoop();
 </script>
 <script>
