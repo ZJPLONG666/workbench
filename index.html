@@ -332,6 +332,7 @@ input,select,textarea{outline:none;font-family:inherit}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
 .i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
+.i-radar{background:var(--c-mint)}
 .flat-app-ico:hover{transform:scale(1.07)}
 .flat-app-name{font-size:12px;font-weight:700;color:var(--ink)}
 
@@ -675,6 +676,12 @@ html[data-theme="dark"] .kpi .kv,html[data-theme="dark"] .kpi .kl{color:var(--in
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
 .i-bao{background:var(--c-peach)} .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
+.i-radar{background:var(--c-mint)}
+
+/* 爆品雷达 iframe 视图 */
+.radar-wrap{margin-top:4px;border-radius:18px;overflow:hidden;border:1px solid var(--card-border);background:#0d1120}
+.radar-wrap iframe{width:100%;height:calc(100vh - 220px);min-height:640px;border:0;display:block}
+@media(max-width:640px){.radar-wrap iframe{height:calc(100vh - 250px);min-height:520px}}
 
 /* 底部 Dock 改造为模板风格 */
 .dock{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;
@@ -782,6 +789,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <a data-nav="issues"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg>问题</a>
     <a data-nav="baopin"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg>爆品</a>
     <a data-nav="profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg>利润</a>
+    <a data-nav="radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg>雷达</a>
   </nav>
   <button class="topcircle" id="refreshBtn" onclick="quickRefresh()" title="立即同步刷新（拉取云端最新数据）">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -813,6 +821,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="chip" onclick="openApp('accounts')"><span class="ci" style="background:var(--c-lilac)"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></span>账号</div>
       <div class="chip" onclick="openApp('baopin')"><span class="ci" style="background:var(--c-peach)"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></span>爆品</div>
       <div class="chip" onclick="openApp('profit')"><span class="ci" style="background:var(--c-lime)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></span>利润</div>
+      <div class="chip" onclick="openApp('radar')"><span class="ci" style="background:var(--c-mint)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></span>雷达</div>
     </div>
 
     <div class="pc-grid">
@@ -843,6 +852,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           <div class="app" onclick="openApp('issues')"><div class="aico i-iss"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></div><span class="anm">问题订单</span></div>
           <div class="app" onclick="openApp('baopin')"><div class="aico i-bao"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-8z"/></svg></div><span class="anm">爆品时间表</span></div>
           <div class="app" onclick="openApp('profit')"><div class="aico i-profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></div><span class="anm">每日利润</span></div>
+          <div class="app" onclick="openApp('radar')"><div class="aico i-radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></div><span class="anm">爆品雷达</span></div>
           <div class="app" onclick="toggleWB(true)"><div class="aico i-wb"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10h7M8.5 13h4"/></svg></div><span class="anm">小策</span></div>
         </div>
       </div>
@@ -998,6 +1008,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div class="flex items-center gap-3 mb-4 flex-wrap">
       <h2 class="section-h flex-1">🔥 爆品时间表</h2>
       <div class="baopin-tools">
+        <button class="btn-ghost" onclick="openApp('radar')">📡 打开爆品雷达</button>
         <button class="btn-ghost" onclick="baopinExport()">⬇ 导出 Excel</button>
       </div>
     </div>
@@ -1038,6 +1049,17 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     </div>
 
     <p class="text-xs font-bold" style="color:var(--ink-2)">数据来源：千帆「包裹详情」导出 · 每天中午自动结算前一天 · 按支付时间归日，已剔除已取消订单</p>
+  </section>
+
+  <!-- ============ 爆品雷达 ============ -->
+  <section id="view-radar" class="view">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <h2 class="section-h flex-1">📡 爆品雷达</h2>
+      <button class="pillbtn" onclick="radarReload()">🔄 刷新</button>
+      <button class="pillbtn dark" onclick="window.open('baopin-radar.html','_blank')">⛶ 全屏打开</button>
+    </div>
+    <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">每天 9:00 自动更新 · 选品三原则：24h加购高 50% / 加购:总销量≈1:1 30% / 店铺粉丝≤1000 优先 20% · 多日信号：🆕首次出现 / 🔁重新上榜 / 销量增幅</p>
+    <div class="radar-wrap"><iframe id="radarFrame" title="爆品雷达" loading="lazy"></iframe></div>
   </section>
 
   <!-- 每日利润 · 某天明细（底部抽屉） -->
@@ -1346,8 +1368,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin','profit'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表',profit:'每日利润'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','baopin','radar','profit'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'问题订单',baopin:'爆品时间表',radar:'爆品雷达',profit:'每日利润'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1367,8 +1389,17 @@ function openApp(name){
   if(name==='sync')renderSync();
   if(name==='issues')renderIssues();
   if(name==='baopin')renderBaopin();
+  if(name==='radar')loadRadar();
   if(name==='profit')renderProfit();
 }
+/* ===================== 爆品雷达（iframe 懒加载） ===================== */
+function loadRadar(force){
+  const f=document.getElementById('radarFrame'); if(!f)return;
+  const d=new Date();
+  const stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(force||!f.getAttribute('src'))f.setAttribute('src','baopin-radar.html?d='+stamp+(force?('&t='+Date.now()):''));
+}
+function radarReload(){loadRadar(true);}
 /* ===================== 爆品时间表 ===================== */
 function renderBaopin(){
   const wrap=document.getElementById('baopinWrap'); if(!wrap)return;
