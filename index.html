@@ -1035,7 +1035,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <div class="flex items-center gap-3 mb-4 flex-wrap">
       <h2 class="section-h flex-1">📡 爆品雷达</h2>
       <button class="pillbtn" onclick="radarReload()">🔄 刷新</button>
-      <button class="pillbtn dark" onclick="window.open('baopin-radar.html','_blank')">⛶ 全屏打开</button>
+      <button class="pillbtn dark" onclick="window.open('baopin-radar.html?v='+(typeof RADAR_VER!=='undefined'?RADAR_VER:Date.now()),'_blank')">⛶ 全屏打开</button>
     </div>
     <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">每天 9:00 自动更新 · 选品三原则：24h加购高 50% / 加购:总销量≈1:1 30% / 店铺粉丝≤1000 优先 20% · 多日信号：🆕首次出现 / 🔁重新上榜 / 销量增幅</p>
     <div class="radar-wrap"><iframe id="radarFrame" title="爆品雷达" loading="lazy"></iframe></div>
@@ -1353,11 +1353,12 @@ function openApp(name){
   if(name==='profit')renderProfit();
 }
 /* ===================== 爆品雷达（iframe 懒加载） ===================== */
+const RADAR_VER='663942aa';   // 由 fetch_today.py 自动更新：雷达文件内容哈希，避免浏览器缓存旧版
 function loadRadar(force){
   const f=document.getElementById('radarFrame'); if(!f)return;
   const d=new Date();
   const stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  if(force||!f.getAttribute('src'))f.setAttribute('src','baopin-radar.html?d='+stamp+(force?('&t='+Date.now()):''));
+  if(force||!f.getAttribute('src'))f.setAttribute('src','baopin-radar.html?v='+RADAR_VER+'&d='+stamp+(force?('&t='+Date.now()):''));
 }
 function radarReload(){loadRadar(true);}
 /* ===================== 双十一购物清单 ===================== */
