@@ -1353,7 +1353,7 @@ function openApp(name){
   if(name==='profit')renderProfit();
 }
 /* ===================== 爆品雷达（iframe 懒加载） ===================== */
-const RADAR_VER='55cb96a0';   // 由 fetch_today.py 自动更新：雷达文件内容哈希，避免浏览器缓存旧版
+const RADAR_VER='7cd1d41d';   // 由 fetch_today.py 自动更新：雷达文件内容哈希，避免浏览器缓存旧版
 function loadRadar(force){
   const f=document.getElementById('radarFrame'); if(!f)return;
   const d=new Date();
