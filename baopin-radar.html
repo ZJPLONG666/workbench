@@ -68,10 +68,14 @@ input[name=view] { position:fixed; opacity:0; pointer-events:none; }
 .td { font-size:11px; }
 .vhead { display:flex; align-items:baseline; gap:12px; margin:22px 0 12px; }
 .vhead b { font-size:16px; } .vhead span { font-size:12px; color:#68739a; }
-.twrap { overflow-x:auto; border:1px solid #1f2740; border-radius:12px; margin-top:10px; }
+.twrap { border:1px solid #1f2740; border-radius:12px; margin-top:10px; }
 table { border-collapse:collapse; width:100%; min-width:1280px; font-size:13px; }
 th { background:#131a2c; color:#7f8bab; font-weight:600; font-size:12px; padding:11px 12px; text-align:center;
-  border-bottom:1px solid #1f2740; white-space:nowrap; position:sticky; top:64px; }
+  border-bottom:1px solid #1f2740; white-space:nowrap; position:sticky; top:64px; z-index:10; }
+thead th:first-child { border-top-left-radius:11px; }
+thead th:last-child { border-top-right-radius:11px; }
+tbody tr:last-child td:first-child { border-bottom-left-radius:11px; }
+tbody tr:last-child td:last-child { border-bottom-right-radius:11px; }
 td { padding:11px 12px; border-bottom:1px solid #171e33; text-align:center; vertical-align:middle; }
 tbody tr:hover { background:#161d33; }
 .l { text-align:left; }
@@ -141,13 +145,14 @@ tbody tr:hover { background:#161d33; }
 #v-c0:checked ~ .wrap label[for=v-c0],#v-c1:checked ~ .wrap label[for=v-c1],#v-c2:checked ~ .wrap label[for=v-c2],#v-c3:checked ~ .wrap label[for=v-c3],#v-c4:checked ~ .wrap label[for=v-c4],#v-c5:checked ~ .wrap label[for=v-c5],#v-c6:checked ~ .wrap label[for=v-c6],#v-c7:checked ~ .wrap label[for=v-c7],#v-c8:checked ~ .wrap label[for=v-c8],#v-c9:checked ~ .wrap label[for=v-c9],#v-c10:checked ~ .wrap label[for=v-c10],#v-c11:checked ~ .wrap label[for=v-c11],#v-c12:checked ~ .wrap label[for=v-c12],#v-c13:checked ~ .wrap label[for=v-c13]{background:#ff2d55;border-color:#ff2d55;color:#fff;font-weight:700}
 #v-c0:checked ~ .wrap label[for=v-c0],#v-c1:checked ~ .wrap label[for=v-c1],#v-c2:checked ~ .wrap label[for=v-c2],#v-c3:checked ~ .wrap label[for=v-c3],#v-c4:checked ~ .wrap label[for=v-c4],#v-c5:checked ~ .wrap label[for=v-c5],#v-c6:checked ~ .wrap label[for=v-c6],#v-c7:checked ~ .wrap label[for=v-c7],#v-c8:checked ~ .wrap label[for=v-c8],#v-c9:checked ~ .wrap label[for=v-c9],#v-c10:checked ~ .wrap label[for=v-c10],#v-c11:checked ~ .wrap label[for=v-c11],#v-c12:checked ~ .wrap label[for=v-c12],#v-c13:checked ~ .wrap label[for=v-c13] i{background:rgba(255,255,255,.24);color:#fff}
 @media (max-width:1100px) { .kpis,.rules,.t3 { grid-template-columns:repeat(2,1fr); } .dtabs { grid-template-columns:repeat(4,1fr); } .searchrow { grid-template-columns:1fr; } }
+@media (max-width:1400px) { .twrap { overflow-x:auto; } th { position:static; } }
 </style></head>
 <body>
 
 <div class="topbar"><div class="wrap">
   <div class="logo">爆</div>
   <div class="tt"><b>小红书爆品雷达</b><span>11 DAYS PRODUCT WORKBOOK</span></div>
-  <div class="gen">数据：飞书「24小时加购爆品表」8月31日~9月10日 · 生成 2026-09-10 22:37</div>
+  <div class="gen">数据：飞书「24小时加购爆品表」8月31日~9月10日 · 生成 2026-09-11 10:57</div>
 </div></div>
 
 <input type="radio" name="view" id="v-main" checked><input type="radio" name="view" id="v-focus"><input type="radio" name="view" id="v-hot"><input type="radio" name="view" id="v-fresh"><input type="radio" name="view" id="v-back"><input type="radio" name="view" id="v-stable"><input type="radio" name="view" id="v-risk"><input type="radio" name="view" id="v-c0"><input type="radio" name="view" id="v-c1"><input type="radio" name="view" id="v-c2"><input type="radio" name="view" id="v-c3"><input type="radio" name="view" id="v-c4"><input type="radio" name="view" id="v-c5"><input type="radio" name="view" id="v-c6"><input type="radio" name="view" id="v-c7"><input type="radio" name="view" id="v-c8"><input type="radio" name="view" id="v-c9"><input type="radio" name="view" id="v-c10"><input type="radio" name="view" id="v-c11"><input type="radio" name="view" id="v-c12"><input type="radio" name="view" id="v-c13"><input type="radio" name="view" id="v-d20260909"><input type="radio" name="view" id="v-d20260908"><input type="radio" name="view" id="v-d20260907"><input type="radio" name="view" id="v-d20260906"><input type="radio" name="view" id="v-d20260905"><input type="radio" name="view" id="v-d20260904"><input type="radio" name="view" id="v-d20260903"><input type="radio" name="view" id="v-d20260902"><input type="radio" name="view" id="v-d20260901"><input type="radio" name="view" id="v-d20260831">
