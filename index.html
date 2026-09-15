@@ -1711,6 +1711,8 @@ function kbCard(t){
   el.className='kb-card'+(kbSelected.has(t.id)?' selected':'')+(kbEditId===t.id?' editing':'');
   el.dataset.id=t.id;
   const st=t.style||{};
+  /* 工作区按「段」区分归属（段头已有名字卡），卡片上不再重复显示负责人头像 */
+  const showAvatar=!KB_LANES[t.column];
   el.innerHTML=`
     <span class="kb-drag" draggable="true" title="拖动排序">⠿</span>
     <span class="kb-check" title="选择"></span>
@@ -1721,7 +1723,7 @@ function kbCard(t){
         <span class="kb-prio ${t.priority.toLowerCase()}" title="点击切换优先级">${t.priority}</span>
       </div>
       <div class="kb-foot">
-        <span class="kb-avatar" style="background:${KB_MEMBER_COLORS[t.assignee]||'#999'}" title="点击更换负责人">${t.assignee==='老婆'?'婆':'曾'}</span>
+        ${showAvatar?`<span class="kb-avatar" style="background:${KB_MEMBER_COLORS[t.assignee]||'#999'}" title="点击更换负责人">${t.assignee==='老婆'?'婆':'曾'}</span>`:''}
         <span class="kb-due ${kbOverdue(t)?'overdue':''}" title="点击修改日期">🗓 ${kbDueText(t)}${kbOverdue(t)?' ⚠️':''}</span>
         ${t.due?`<span class="kb-due ${dueOverdue(t)?'overdue':''}" title="完成截止时间">⏰ ${dueTimeText(t)}</span>`:''}
       </div>
@@ -1760,8 +1762,9 @@ function kbCard(t){
     save();renderKanban();
   });
   prio.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();kbShowPrMenu(e.clientX,e.clientY,t);});
-  /* 头像：点击更换负责人 */
-  el.querySelector('.kb-avatar').addEventListener('click',e=>{
+  /* 头像：点击更换负责人（工作区无头像，需判空） */
+  const avatarEl=el.querySelector('.kb-avatar');
+  if(avatarEl)avatarEl.addEventListener('click',e=>{
     e.stopPropagation();
     t.assignee=t.assignee==='曾生'?'老婆':'曾生';
     save();renderKanban();toast('已改为 '+t.assignee+' 负责');
