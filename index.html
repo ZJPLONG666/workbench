@@ -486,6 +486,118 @@ html[data-theme="dark"] .kb-overdue-row:hover{background:rgba(255,255,255,.17)}
 .due-chip.over{background:#ef4444;color:#fff}
 .cal-clock{display:inline-block;font-size:8px;line-height:1;background:var(--badge-bg);color:var(--yellow);border-radius:4px;padding:1px 2px;margin-top:1px}
 
+/* ===================== 灵感积累（草稿箱式富文本） =====================
+   左侧草稿列表 + 右侧编辑区；纸面底纹用纯 CSS 渐变实现（无外部依赖）。 */
+.idea-wrap{display:grid;grid-template-columns:258px 1fr;gap:14px;align-items:start}
+@media(max-width:880px){.idea-wrap{grid-template-columns:1fr}}
+.idea-sync,.idea-cnt{font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.idea-cnt{background:var(--surface);border-radius:var(--r-pill);padding:1px 8px}
+.idea-sync.warn{color:#B4544F}
+
+.idea-side{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);padding:11px;display:flex;flex-direction:column;gap:9px;position:sticky;top:10px;max-height:calc(100dvh - 130px)}
+@media(max-width:880px){.idea-side{position:static;max-height:none}}
+.idea-side-h{display:flex;align-items:center;gap:8px}
+.idea-side-h b{font-size:14px;font-weight:800;color:var(--ink)}
+.idea-new{margin-left:auto;padding:5px 12px;border-radius:var(--r-pill);border:none;background:var(--badge-bg);color:var(--badge-fg);font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.idea-new:hover{opacity:.85}
+.idea-search{width:100%;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--hairline);background:var(--field-bg);color:var(--ink);font-size:12.5px;font-weight:600;outline:none;font-family:inherit}
+.idea-search:focus{border-color:var(--badge-bg)}
+.idea-list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:7px;min-height:70px}
+.idea-item{border:1.5px solid transparent;border-radius:var(--r-md);background:var(--field-bg);padding:9px 10px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.idea-item:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.idea-item.on{border-color:var(--badge-bg);background:var(--card-bg)}
+.idea-item-t{font-size:13px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idea-item-p{font-size:11.5px;font-weight:600;color:var(--ink-2);margin-top:3px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.idea-item-m{font-size:10.5px;font-weight:700;color:var(--ink-2);margin-top:5px;display:flex;align-items:center;gap:7px}
+.idea-item-del{margin-left:auto;color:var(--ink-2);padding:0 3px;border-radius:5px;cursor:pointer}
+.idea-item-del:hover{color:#D96C6C;background:rgba(217,108,108,.12)}
+.idea-item-del.arm{color:#fff;background:#D96C6C}
+.idea-empty{padding:24px 10px;text-align:center;font-size:12.5px;font-weight:700;color:var(--ink-2);line-height:1.8}
+.idea-syncline{font-size:10.5px;font-weight:700;color:var(--ink-2);text-align:center;border-top:1px dashed var(--hairline);padding-top:7px}
+.idea-syncline.ok{color:#4E7A3A}
+.idea-syncline.bad{color:#B4544F}
+
+.idea-main{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;overflow:hidden;min-height:520px}
+.idea-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--hairline);background:var(--field-bg)}
+.idea-bar.off{opacity:.45;pointer-events:none}
+.idea-tb{min-width:30px;height:30px;padding:0 8px;border:none;border-radius:9px;background:transparent;color:var(--ink-2);font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:background .15s,color .15s;font-family:inherit}
+.idea-tb:hover{background:var(--card-bg);color:var(--ink)}
+.idea-sep{width:1px;height:18px;background:var(--hairline);margin:0 3px;flex-shrink:0}
+.idea-papers{margin-left:auto;display:flex;align-items:center;gap:5px}
+.idea-paper-b{width:30px;height:30px;border-radius:9px;border:1.5px solid var(--hairline);background:#fff;cursor:pointer;position:relative;overflow:hidden;padding:0;flex-shrink:0}
+.idea-paper-b.on{border-color:var(--badge-bg);box-shadow:0 0 0 2px rgba(28,28,30,.12)}
+/* 色板内层必须自带底色：否则深色模式下是「白底白线」，四个方块看起来全是空白 */
+.idea-paper-b i{position:absolute;inset:0;display:block;background-color:#fff}
+.pb-plain i{background-color:#fff}
+.pb-line i{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 6px,rgba(90,110,150,.55) 6px,rgba(90,110,150,.55) 7px)}
+.pb-dot i{background-image:radial-gradient(circle,rgba(90,110,150,.75) 1px,transparent 1.1px);background-size:7px 7px}
+.pb-grid i{background-image:linear-gradient(rgba(90,110,150,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(90,110,150,.5) 1px,transparent 1px);background-size:7px 7px}
+html[data-theme="dark"] .idea-paper-b{border-color:rgba(255,255,255,.22);background:#22222a}
+html[data-theme="dark"] .idea-paper-b i{background-color:#22222a}
+html[data-theme="dark"] .pb-line i{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 6px,rgba(255,255,255,.35) 6px,rgba(255,255,255,.35) 7px)}
+html[data-theme="dark"] .pb-dot i{background-image:radial-gradient(circle,rgba(255,255,255,.5) 1px,transparent 1.1px);background-size:7px 7px}
+html[data-theme="dark"] .pb-grid i{background-image:linear-gradient(rgba(255,255,255,.32) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.32) 1px,transparent 1px);background-size:7px 7px}
+
+.idea-doc{flex:1;display:flex;flex-direction:column;min-height:0}
+.idea-title{width:100%;border:none;outline:none;background:transparent;color:var(--ink);font-size:21px;font-weight:800;padding:15px 20px 4px;line-height:1.35;font-family:inherit}
+.idea-title::placeholder{color:var(--ink-2);opacity:.6}
+.idea-title:disabled{opacity:.4}
+/* 纸面：横线用 --idea-lh 与 line-height 严格对齐，线正好落在每行文字底部 */
+.idea-body{--idea-lh:31px;--idea-rule:rgba(120,140,180,.30);
+  flex:1;outline:none;margin:6px 14px 0;padding:8px 16px 40px;min-height:300px;
+  border:1px solid var(--hairline);border-radius:var(--r-md);
+  color:var(--ink);font-size:15px;line-height:1.75;word-break:break-word;
+  background-color:#fff;background-repeat:repeat;background-position:0 0}
+html[data-theme="dark"] .idea-body{--idea-rule:rgba(255,255,255,.13);background-color:#1A1A1F}
+.idea-body[contenteditable="false"]{opacity:.55}
+.idea-body:empty::before{content:attr(data-ph);color:var(--ink-2);opacity:.55;pointer-events:none}
+.idea-body[data-paper="plain"]{background-image:none}
+.idea-body[data-paper="line"]{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--idea-lh) - 1px),var(--idea-rule) calc(var(--idea-lh) - 1px),var(--idea-rule) var(--idea-lh));background-position:0 0;line-height:var(--idea-lh)}
+.idea-body[data-paper="dot"]{background-image:radial-gradient(circle,var(--idea-rule) 1.15px,transparent 1.25px);background-size:var(--idea-lh) var(--idea-lh);background-position:8px 8px}
+.idea-body[data-paper="grid"]{background-image:linear-gradient(var(--idea-rule) 1px,transparent 1px),linear-gradient(90deg,var(--idea-rule) 1px,transparent 1px);background-size:var(--idea-lh) var(--idea-lh);background-position:8px 8px}
+.idea-body h1{font-size:24px;font-weight:800;margin:14px 0 6px;line-height:1.4}
+.idea-body h2{font-size:19.5px;font-weight:800;margin:12px 0 5px;line-height:1.4}
+.idea-body h3{font-size:16.5px;font-weight:800;margin:10px 0 4px;line-height:1.4}
+.idea-body blockquote{margin:8px 0;padding:3px 12px;border-left:3px solid var(--pink);background:rgba(217,167,199,.14);border-radius:0 8px 8px 0;color:var(--ink-2)}
+.idea-body ul,.idea-body ol{margin:6px 0 6px 24px}
+.idea-body li{margin:2px 0}
+.idea-body a{color:#2F6FD0;text-decoration:underline;word-break:break-all;cursor:pointer}
+html[data-theme="dark"] .idea-body a{color:#8CB4FF}
+.idea-body hr{border:none;border-top:1px solid var(--hairline);margin:12px 0}
+/* 横线纸上让标题也落在同一条网格里（行高=格子高、上方留一行空白），否则标题会把后面的行挤偏 */
+.idea-body[data-paper="line"] h1,
+.idea-body[data-paper="line"] h2,
+.idea-body[data-paper="line"] h3{line-height:var(--idea-lh);margin:var(--idea-lh) 0 0}
+.idea-body[data-paper="line"]>*:first-child{margin-top:0}
+.idea-body img{max-width:100%;height:auto;border-radius:10px;display:block;margin:9px 0;cursor:pointer;box-shadow:var(--shadow-sm);background:#fff}
+.idea-body img.sel{outline:3px solid var(--badge-bg);outline-offset:2px}
+/* 画布里的 `<font size=7>`（execCommand 字号产物）统一换成 px 的内联字号 */
+.idea-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px 10px;font-size:10.5px;font-weight:700;color:var(--ink-2)}
+.idea-foot #ideaHint{margin-left:auto}
+@media(max-width:620px){.idea-foot #ideaHint{display:none}}
+
+/* 图片选中后的浮层小工具条 */
+.idea-imgbar{display:none;position:fixed;z-index:220;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--r-pill);
+  background:var(--card-bg);border:1px solid var(--card-border);box-shadow:var(--shadow-float);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
+.idea-imgbar.show{display:flex}
+.idea-imgbar span{font-size:11px;font-weight:800;color:var(--ink-2);padding:0 2px}
+.idea-imgbar button{border:none;background:transparent;color:var(--ink);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:var(--r-pill);cursor:pointer;font-family:inherit}
+.idea-imgbar button:hover{background:var(--field-bg)}
+.idea-imgbar button.del{color:#D24B4B}
+.idea-imgbar button.del:hover{background:rgba(210,75,75,.14)}
+
+/* 插入链接小面板（不用 prompt：无头环境会阻塞） */
+.idea-linkpop{display:none;position:fixed;z-index:220;width:min(92vw,330px);padding:13px 14px;border-radius:var(--r-lg);
+  background:var(--card-bg);border:1px solid var(--card-border);box-shadow:var(--shadow-float);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
+.idea-linkpop.show{display:block}
+.idea-linkpop-r{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.idea-linkpop-r label{font-size:11.5px;font-weight:800;color:var(--ink-2);width:30px;flex-shrink:0}
+.idea-linkpop-r input{flex:1;min-width:0;padding:6px 9px;border-radius:var(--r-sm);border:1px solid var(--hairline);background:var(--field-bg);color:var(--ink);font-size:12.5px;font-weight:600;outline:none;font-family:inherit}
+.idea-linkpop-r input:focus{border-color:var(--badge-bg)}
+.idea-linkpop-a{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.idea-linkpop-a button{padding:6px 14px;border-radius:var(--r-pill);font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--hairline);background:transparent;color:var(--ink-2);font-family:inherit}
+.idea-linkpop-a button.ok{background:var(--badge-bg);color:var(--badge-fg);border-color:var(--badge-bg)}
+
 /* ===================== 提醒弹窗 / 设置 ===================== */
 #reminderToast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-160%);z-index:90;width:min(92vw,420px);
   background:var(--card-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
@@ -843,6 +955,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <a data-nav="issues"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg>清单</a>
     <a data-nav="profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg>利润</a>
     <a data-nav="radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg>雷达</a>
+    <a data-nav="ideas"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.7 10.7c.5.5.9 1.1 1 1.8l.1.5h5.2l.1-.5c.1-.7.5-1.3 1-1.8A6 6 0 0 0 12 3z"/></svg>灵感</a>
   </nav>
   <button class="topcircle" id="refreshBtn" onclick="quickRefresh()" title="立即同步刷新（拉取云端最新数据）">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -1055,6 +1168,90 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   </section>
 
 
+  <!-- ============ 灵感积累（草稿箱式富文本笔记） ============ -->
+  <section id="view-ideas" class="view">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <h2 class="section-h flex-1">💡 灵感积累</h2>
+      <span class="idea-sync" id="ideaMeter">本机已用 —</span>
+      <button class="pillbtn" onclick="ideaPull(true)">☁️ 云同步</button>
+    </div>
+
+    <div class="idea-wrap">
+      <aside class="idea-side">
+        <div class="idea-side-h"><b>草稿箱</b><span class="idea-cnt" id="ideaCnt">0</span>
+          <button class="idea-new" onclick="ideaNewNote()">＋ 新建</button></div>
+        <input class="idea-search" id="ideaSearch" placeholder="搜索标题或内容…" spellcheck="false"
+               oninput="ideaQuery=this.value;ideaRenderList()">
+        <div class="idea-list" id="ideaList"></div>
+        <div class="idea-syncline" id="ideaSyncTxt">未连接云同步</div>
+      </aside>
+
+      <div class="idea-main">
+        <div class="idea-bar" id="ideaBar">
+          <button class="idea-tb" data-block="h1" title="大标题">H1</button>
+          <button class="idea-tb" data-block="h2" title="中标题">H2</button>
+          <button class="idea-tb" data-block="h3" title="小标题">H3</button>
+          <button class="idea-tb" data-block="p" title="正文段落">正文</button>
+          <span class="idea-sep"></span>
+          <button class="idea-tb" data-cmd="bold" title="加粗（Ctrl/⌘+B）"><b>B</b></button>
+          <button class="idea-tb" data-cmd="italic" title="斜体（Ctrl/⌘+I）"><i>I</i></button>
+          <button class="idea-tb" data-cmd="underline" title="下划线（Ctrl/⌘+U）"><u>U</u></button>
+          <button class="idea-tb" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+          <span class="idea-sep"></span>
+          <button class="idea-tb" data-size="13" title="小字">A－</button>
+          <button class="idea-tb" data-size="15" title="正常字号">A</button>
+          <button class="idea-tb" data-size="19" title="大字">A＋</button>
+          <span class="idea-sep"></span>
+          <button class="idea-tb" data-block="blockquote" title="引用">❝ 引用</button>
+          <button class="idea-tb" data-cmd="insertUnorderedList" title="无序列表">• 列表</button>
+          <button class="idea-tb" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
+          <button class="idea-tb" data-cmd="insertHorizontalRule" title="插入分割线">— 分割</button>
+          <span class="idea-sep"></span>
+          <button class="idea-tb" onclick="ideaLinkOpen()" title="插入超链接">🔗 链接</button>
+          <button class="idea-tb" onclick="ideaPickImage()" title="插入图片（也可直接粘贴 / 拖入）">🖼 图片</button>
+          <button class="idea-tb" data-cmd="removeFormat" title="清除所选文字的格式">清格式</button>
+          <span class="idea-sep"></span>
+          <button class="idea-tb" data-cmd="undo" title="撤销">↶</button>
+          <button class="idea-tb" data-cmd="redo" title="重做">↷</button>
+          <div class="idea-papers" id="ideaPapers">
+            <button class="idea-paper-b pb-plain on" data-paper="plain" title="纯白纸"><i></i></button>
+            <button class="idea-paper-b pb-line" data-paper="line" title="横线纸"><i></i></button>
+            <button class="idea-paper-b pb-dot" data-paper="dot" title="点状格纸"><i></i></button>
+            <button class="idea-paper-b pb-grid" data-paper="grid" title="方形格纸"><i></i></button>
+          </div>
+        </div>
+
+        <div class="idea-doc">
+          <input class="idea-title" id="ideaTitle" placeholder="给这条灵感起个标题" spellcheck="false">
+          <div class="idea-body" id="ideaBody" contenteditable="true" spellcheck="false"
+               data-paper="plain" data-ph="记录此刻的灵感…（可插入图片和链接；从网页粘贴会自动转成纯文本，避免把网页样式带进来）"></div>
+        </div>
+
+        <div class="idea-foot">
+          <span id="ideaStat">—</span>
+          <span id="ideaHint">插图：点「🖼 图片」，或直接粘贴截图 / 把图拖进来 · 点图片可改大小或删除</span>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="ideaFile" accept="image/*" multiple style="display:none">
+
+    <div class="idea-imgbar" id="ideaImgBar">
+      <span>图片</span>
+      <button data-w="30%">小</button>
+      <button data-w="60%">中</button>
+      <button data-w="100%">大</button>
+      <button data-w="">原图</button>
+      <button class="del" data-imgdel="1">删除</button>
+    </div>
+
+    <div class="idea-linkpop" id="ideaLinkPop">
+      <div class="idea-linkpop-r"><label>文字</label><input id="ideaLinkText" placeholder="显示的文字" spellcheck="false"></div>
+      <div class="idea-linkpop-r"><label>链接</label><input id="ideaLinkUrl" placeholder="https://…" spellcheck="false"></div>
+      <div class="idea-linkpop-a"><button onclick="ideaLinkClose()">取消</button><button class="ok" onclick="ideaLinkApply()">插入</button></div>
+    </div>
+  </section>
+
   <!-- ============ 每日利润 ============ -->
   <section id="view-profit" class="view">
     <div class="flex items-center gap-3 mb-4 flex-wrap">
@@ -1257,6 +1454,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dbtn" data-nav="issues" title="双十一购物清单"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></button>
   <button class="dbtn" data-nav="profit" title="每日利润"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></button>
   <button class="dbtn" data-nav="radar" title="爆品雷达"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></button>
+  <button class="dbtn" data-nav="ideas" title="灵感积累"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.7 10.7c.5.5.9 1.1 1 1.8l.1.5h5.2l.1-.5c.1-.7.5-1.3 1-1.8A6 6 0 0 0 12 3z"/></svg></button>
 </nav>
 
 <!-- ============ WorkBuddy 右侧 50% 透明度悬浮弹窗 ============ -->
@@ -1338,7 +1536,17 @@ function stampRecords(){
   _recSig=next;
   try{localStorage.setItem(DB_KEY+'_recsig',JSON.stringify(next));}catch(e){}
 }
-function save(){DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();stampRecords();localStorage.setItem(DB_KEY,JSON.stringify(DB));syncSchedulePush();}
+/* localStorage 只有 ~5MB，写入可能因配额爆掉（灵感积累里的图片 base64 会撑大体积）。
+   兜住它：不让一次写入失败把整页的保存链路带崩。 */
+function save(){
+  DB.meta=DB.meta||{};DB.meta.updatedAt=Date.now();stampRecords();
+  try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}
+  catch(e){
+    console.error('[save] 本机存储写入失败（多半是配额已满）',e);
+    try{toast('本机存储已满，这次改动没能存下来 ⚠️');}catch(_){}
+  }
+  syncSchedulePush();
+}
 // 删除墓碑：删除记录时记下"集合:主键"，合并时两侧都剔除该记录，使删除可跨端生效且不再复活
 function recKey(col,rec){
   if(col==='products') return (rec.shop||'')+'|'+(rec.name||'');
@@ -1389,8 +1597,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues','radar','profit'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'双十一购物清单',radar:'爆品雷达',profit:'每日利润'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','radar','profit','ideas'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'双十一购物清单',radar:'爆品雷达',profit:'每日利润',ideas:'灵感积累'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1411,6 +1619,7 @@ function openApp(name){
   if(name==='issues')renderIssues();
   if(name==='radar')loadRadar();
   if(name==='profit')renderProfit();
+  if(name==='ideas')renderIdeas();
 }
 /* ===================== 爆品雷达（iframe 懒加载） ===================== */
 const RADAR_VER='e09b2202';   // 由 fetch_today.py 自动更新：雷达文件内容哈希，避免浏览器缓存旧版
@@ -2677,8 +2886,9 @@ function mergeDB(local, remote){
   // 合并两侧墓碑：被标记为删除的记录，在任何一侧都不应再出现
   const delSet=new Set([...(local.deleted||[]), ...(remote.deleted||[])]);
   // 按 id 合并的集合：同一记录按 updatedAt 取较新一侧，再剔除墓碑
-  ['tasks','issues','notes','sales'].forEach(k=>{
+  ['tasks','issues','notes','sales','ideas'].forEach(k=>{
     const rm=remote[k]||[], lm=local[k]||[];
+    if(remote[k]===undefined&&local[k]===undefined)return; // 两侧都没有这个集合就别凭空造一个键
     const map=new Map(lm.map(x=>[x.id,x]));
     rm.forEach(x=>{
       if(map.has(x.id)){ const lr=map.get(x.id); map.set(x.id,(x.updatedAt||0)>=(lr.updatedAt||0)?x:lr); }
@@ -3252,6 +3462,525 @@ function startReminderLoop(){
   clearInterval(reminderTimer);
   reminderTimer=setInterval(checkReminders,15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders();});
+}
+
+/* ==================================================================
+   灵感积累（草稿箱式富文本笔记）
+   —— 独立本地键 + 独立云房间 <同步口令>__ideas
+   为什么独立：笔记里带图片 base64（一张几百 KB），而主数据每 8 秒轮询一次，
+   塞进主房间会把这个轮询彻底拖垮（同「每日利润」用 __profit 独立房间的取舍）。
+   编辑器用 contenteditable + execCommand：单文件、零外部依赖下最现实的方案。
+================================================================== */
+const IDEA_KEY=DB_KEY+'_ideas';
+const IDEA_ROOM_SUFFIX='__ideas';
+const IDEA_MAXW=1600;          // 插图前先等比缩到这个最大边（px）
+const IDEA_Q=0.72;             // webp 压缩质量
+const IDEA_MB=5;               // localStorage 大约 5MB
+const IDEA_PAPERS=['plain','line','dot','grid'];
+const IDEA_PAPER_NAME={plain:'纯白',line:'横线',dot:'点状格',grid:'方形格'};
+let IDEAS=null;
+let ideaCurId=null,ideaQuery='',ideaPulledAt=0,ideaUpserting=false,ideaPushTimer=null,ideaPullBusy=false;
+let ideaRange=null,ideaImgEl=null,ideaEditTimer=null,ideaDelArm=null,ideaSyncState='',ideaSyncAt=0;
+
+/* ---------- 本机存储 ---------- */
+function ideaBlank(){return {ideas:[],deleted:[],meta:{updatedAt:0}};}
+function ideaStore(){
+  if(IDEAS)return IDEAS;
+  try{const raw=localStorage.getItem(IDEA_KEY);if(raw)IDEAS=JSON.parse(raw);}catch(e){IDEAS=null;}
+  if(!IDEAS||typeof IDEAS!=='object'||Array.isArray(IDEAS))IDEAS=ideaBlank();
+  if(!Array.isArray(IDEAS.ideas))IDEAS.ideas=[];
+  if(!Array.isArray(IDEAS.deleted))IDEAS.deleted=[];
+  if(!IDEAS.meta||typeof IDEAS.meta!=='object')IDEAS.meta={updatedAt:0};
+  return IDEAS;
+}
+function ideaWriteLocal(){
+  ideaStore();IDEAS.meta.updatedAt=Date.now();
+  try{localStorage.setItem(IDEA_KEY,JSON.stringify(IDEAS));}
+  catch(e){console.error('[ideas] 本机写入失败',e);toast('本机存储已满，这条灵感可能没存下来 ⚠️');}
+}
+function ideaSorted(){return ideaStore().ideas.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));}
+function ideaPlain(html){const d=document.createElement('div');d.innerHTML=ideaSanitize(html);return (d.textContent||'').replace(/\s+/g,' ').trim();}
+function ideaHasImg(n){return /<img/i.test((n&&n.html)||'');}
+/* 内容是自己的，但同步/粘贴仍可能带进脚本或事件属性，落库前统一清掉，避免整页被带崩 */
+function ideaSanitize(html){
+  return String(html==null?'':html)
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[^>]*\/?>/gi,'')
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+    .replace(/(href|src)\s*=\s*("[^"]*"|'[^']*')/gi,(m,a0,v)=>/^\s*["']\s*(javascript|data:text\/html)/i.test(v)?a0+'="#"':m);
+}
+function ideaTimeText(ts){
+  if(!ts)return '';
+  const d=new Date(ts),now=new Date();
+  const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  if(todayStr(d)===todayStr(now))return '今天 '+hm;
+  if(todayStr(d)===todayStr(new Date(Date.now()-86400000)))return '昨天 '+hm;
+  return (d.getMonth()+1)+'月'+d.getDate()+'日';
+}
+function ideaMeter(){
+  const el=document.getElementById('ideaMeter');if(!el)return;
+  let bytes=0;try{bytes=(localStorage.getItem(IDEA_KEY)||'').length;}catch(e){}
+  const mb=bytes/1048576;
+  el.innerHTML='本机已用 <b>'+(bytes<1048576?(Math.round(bytes/1024)+' KB'):(mb.toFixed(2)+' MB'))+'</b> / 约 '+IDEA_MB+' MB';
+  el.classList.toggle('warn',mb/IDEA_MB>=0.7);
+}
+function ideaUpdateStat(){
+  const el=document.getElementById('ideaStat');if(!el)return;
+  const n=ideaStore().ideas.find(x=>x.id===ideaCurId);
+  if(!n){el.textContent='左侧选一条草稿，或点「＋ 新建」开始写';return;}
+  const txt=ideaPlain(n.html);
+  const imgs=(String(n.html||'').match(/<img/gi)||[]).length;
+  el.textContent='共 '+txt.length+' 字'+(imgs?(' · '+imgs+' 张图'):'')+' · 已保存 '+(ideaTimeText(n.updatedAt)||'—');
+}
+
+/* ---------- 列表 ---------- */
+function ideaRenderList(){
+  const wrap=document.getElementById('ideaList');if(!wrap)return;
+  const st=ideaStore();
+  const cnt=document.getElementById('ideaCnt');if(cnt)cnt.textContent=String(st.ideas.length);
+  const q=ideaQuery.trim().toLowerCase();
+  const arr=ideaSorted().filter(n=>!q||(((n.title||'')+' '+ideaPlain(n.html)).toLowerCase().indexOf(q)>=0));
+  if(!arr.length){
+    wrap.innerHTML='<div class="idea-empty">'+(st.ideas.length?'没有匹配的草稿':'还没有草稿<br>点右上角「＋ 新建」开始写')+'</div>';
+    return;
+  }
+  wrap.innerHTML=arr.map(n=>{
+    const title=(n.title||'').trim()||ideaPlain(n.html).slice(0,18)||'无标题';
+    const prev=ideaPlain(n.html).slice(0,90)||'（空草稿）';
+    return '<div class="idea-item'+(n.id===ideaCurId?' on':'')+'" data-id="'+n.id+'">'
+      +'<div class="idea-item-t">'+esc(title)+'</div>'
+      +'<div class="idea-item-p">'+esc(prev)+'</div>'
+      +'<div class="idea-item-m"><span>'+ideaTimeText(n.updatedAt)+'</span>'
+      +'<span>'+esc(IDEA_PAPER_NAME[n.paper||'plain']||'纯白')+'</span>'
+      +(ideaHasImg(n)?'<span title="含图片">🖼</span>':'')
+      +'<span class="idea-item-del'+(ideaDelArm===n.id?' arm':'')+'" data-del="'+n.id+'" title="删除这条草稿">'+(ideaDelArm===n.id?'确认删除':'✕')+'</span>'
+      +'</div></div>';
+  }).join('');
+}
+function ideaBindList(){
+  const wrap=document.getElementById('ideaList');if(!wrap||wrap.__b)return;wrap.__b=1;
+  wrap.addEventListener('click',e=>{
+    const del=e.target.closest?e.target.closest('[data-del]'):null;
+    if(del){
+      e.stopPropagation();
+      const id=del.getAttribute('data-del');
+      if(ideaDelArm===id){ideaDelArm=null;ideaDeleteNote(id);}
+      else{
+        ideaDelArm=id;ideaRenderList();toast('再点一次「确认删除」（3 秒内有效）');
+        setTimeout(()=>{if(ideaDelArm===id){ideaDelArm=null;ideaRenderList();}},3000);
+      }
+      return;
+    }
+    const it=e.target.closest?e.target.closest('.idea-item'):null;
+    if(it)ideaOpen(it.getAttribute('data-id'));
+  });
+}
+function ideaOpen(id){
+  if(!id||id===ideaCurId)return;
+  ideaSaveCur();
+  ideaCurId=id;
+  ideaShow(id);ideaRenderList();
+}
+function ideaNewNote(){
+  ideaSaveCur();
+  const t=Date.now();
+  const n={id:uid(),title:'',html:'',paper:'plain',createdAt:t,updatedAt:t};
+  ideaStore().ideas.unshift(n);
+  ideaCurId=n.id;
+  ideaWriteLocal();ideaSchedulePush();
+  renderIdeas();
+  setTimeout(()=>{const el=document.getElementById('ideaTitle');if(el&&!el.disabled)el.focus();},60);
+  toast('新建了一条灵感，开始写吧 ✍️');
+}
+function ideaDeleteNote(id){
+  const arr=ideaStore().ideas;
+  const i=arr.findIndex(x=>x.id===id);if(i<0)return;
+  const gone=arr[i];
+  arr.splice(i,1);
+  const key='ideas:'+id;
+  IDEAS.deleted=IDEAS.deleted||[];
+  if(IDEAS.deleted.indexOf(key)<0)IDEAS.deleted.push(key);   // 墓碑：删除要能跨端生效
+  if(ideaCurId===id)ideaCurId=null;
+  ideaWriteLocal();ideaSchedulePush();
+  renderIdeas();
+  toast('已删除「'+((gone.title||'').trim()||ideaPlain(gone.html).slice(0,10)||'无标题')+'」');
+}
+
+/* ---------- 编辑器 ---------- */
+function ideaOnEdit(){clearTimeout(ideaEditTimer);ideaEditTimer=setTimeout(ideaSaveCur,500);}
+function ideaSaveCur(){
+  if(!ideaCurId)return;
+  ideaStore();
+  const n=IDEAS.ideas.find(x=>x.id===ideaCurId);if(!n)return;
+  const tEl=document.getElementById('ideaTitle'),bEl=document.getElementById('ideaBody');
+  if(!tEl||!bEl)return;
+  const title=tEl.value.trim();
+  const html=ideaSanitize(bEl.innerHTML);
+  if(n.title===title&&n.html===html)return;    // 没变就不写，省掉一次整库序列化
+  n.title=title;n.html=html;n.updatedAt=Date.now();
+  ideaWriteLocal();ideaSchedulePush();ideaRenderList();ideaMeter();ideaUpdateStat();
+}
+function ideaShow(id){
+  const t=document.getElementById('ideaTitle'),b=document.getElementById('ideaBody'),bar=document.getElementById('ideaBar');
+  if(!t||!b)return;
+  const n=ideaStore().ideas.find(x=>x.id===id);
+  ideaHideImgBar();
+  if(!n){
+    t.value='';t.disabled=true;
+    b.innerHTML='';b.setAttribute('contenteditable','false');b.setAttribute('data-paper','plain');
+    if(bar)bar.classList.add('off');
+    ideaApplyPaper('plain');ideaUpdateStat();
+    return;
+  }
+  t.disabled=false;t.value=n.title||'';
+  b.innerHTML=ideaSanitize(n.html||'');
+  b.setAttribute('contenteditable','true');
+  if(bar)bar.classList.remove('off');
+  ideaApplyPaper(n.paper||'plain');
+  ideaUpdateStat();
+}
+function ideaSyncPaperBtns(p){
+  document.querySelectorAll('#ideaPapers .idea-paper-b').forEach(x=>x.classList.toggle('on',x.getAttribute('data-paper')===p));
+}
+function ideaApplyPaper(p){
+  if(IDEA_PAPERS.indexOf(p)<0)p='plain';
+  const b=document.getElementById('ideaBody');if(b)b.setAttribute('data-paper',p);
+  ideaSyncPaperBtns(p);
+}
+function ideaSetPaper(p){
+  ideaApplyPaper(p);
+  const n=ideaStore().ideas.find(x=>x.id===ideaCurId);
+  if(n&&(n.paper||'plain')!==p){n.paper=p;n.updatedAt=Date.now();ideaWriteLocal();ideaSchedulePush();ideaRenderList();}
+  toast('底纹已切换为「'+(IDEA_PAPER_NAME[p]||'')+'」');
+}
+function ideaRangeSave(){
+  const b=document.getElementById('ideaBody');if(!b)return;
+  const s=window.getSelection();if(!s||!s.rangeCount)return;
+  const r=s.getRangeAt(0);
+  if(r.startContainer===b||b.contains(r.startContainer))ideaRange=r.cloneRange();
+}
+function ideaRestoreRange(){
+  const b=document.getElementById('ideaBody');if(!b)return;
+  try{b.focus();}catch(e){}
+  if(!ideaRange)return;
+  try{const s=window.getSelection();s.removeAllRanges();s.addRange(ideaRange);}catch(e){}
+}
+function ideaEditable(){const b=document.getElementById('ideaBody');return !!(b&&b.getAttribute('contenteditable')==='true');}
+function ideaExec(cmd){
+  if(!ideaEditable())return;
+  ideaRestoreRange();
+  try{document.execCommand(cmd,false,null);}catch(e){}
+  ideaOnEdit();ideaUpdateStat();
+}
+function ideaBlock(tag){
+  if(!ideaEditable())return;
+  ideaRestoreRange();
+  try{document.execCommand('formatBlock',false,String(tag).toUpperCase());}catch(e){}
+  ideaOnEdit();ideaUpdateStat();
+}
+/* 字号：execCommand 的 fontSize 产物是 <font size="7">，统一换写成 px 内联样式 */
+function ideaFont(px){
+  if(!ideaEditable())return;
+  ideaRestoreRange();
+  const b=document.getElementById('ideaBody');
+  try{document.execCommand('styleWithCSS',false,false);}catch(e){}
+  try{document.execCommand('fontSize',false,'7');}catch(e){}
+  b.querySelectorAll('font[size="7"]').forEach(f=>{
+    const s=document.createElement('span');s.style.fontSize=px+'px';s.innerHTML=f.innerHTML;f.replaceWith(s);
+  });
+  b.querySelectorAll('span[style*="font-size"]').forEach(s=>{
+    if(/xx-large|x-large|xxx-large|large|medium/i.test(s.style.fontSize||''))s.style.fontSize=px+'px';
+  });
+  ideaOnEdit();ideaUpdateStat();
+}
+function ideaInsertHtml(html){
+  const b=document.getElementById('ideaBody');if(!b)return;
+  ideaRestoreRange();
+  let ok=false;
+  try{ok=document.execCommand('insertHTML',false,html);}catch(e){ok=false;}
+  if(!ok)b.insertAdjacentHTML('beforeend',html);   // execCommand 不支持时兜底追加
+  ideaRangeSave();ideaOnEdit();ideaUpdateStat();
+}
+function ideaInsertText(txt){ideaInsertHtml(esc(txt).replace(/\r\n|\r|\n/g,'<br>'));}
+
+/* ---------- 超链接（不用 prompt：无头环境会阻塞） ---------- */
+function ideaLinkOpen(){
+  if(!ideaEditable()){toast('先新建或选一条草稿');return;}
+  ideaRangeSave();
+  const b=document.getElementById('ideaBody');
+  const s=window.getSelection();
+  const selTxt=(s&&!s.isCollapsed)?String(s.toString()).trim():'';
+  const pop=document.getElementById('ideaLinkPop');if(!pop)return;
+  document.getElementById('ideaLinkText').value=selTxt;
+  document.getElementById('ideaLinkUrl').value='';
+  pop.classList.add('show');
+  let r=b.getBoundingClientRect();
+  if(ideaRange){try{r=ideaRange.getBoundingClientRect();}catch(e){}}
+  const pw=pop.offsetWidth||330,ph=pop.offsetHeight||150;
+  const left=Math.max(10,Math.min((r.left||r.x||140)+(r.width||0)/2-pw/2,innerWidth-pw-10));
+  let top=(r.bottom||r.y||140)+10;
+  if(top+ph>innerHeight-10)top=Math.max(10,(r.top||r.y||140)-ph-10);
+  pop.style.left=left+'px';pop.style.top=top+'px';
+  document.getElementById('ideaLinkText').focus();
+}
+function ideaLinkClose(){const p=document.getElementById('ideaLinkPop');if(p)p.classList.remove('show');}
+function ideaLinkApply(){
+  const txt=document.getElementById('ideaLinkText').value.trim();
+  let url=document.getElementById('ideaLinkUrl').value.trim();
+  if(!url){toast('请填写链接地址');return;}
+  if(/^javascript:/i.test(url)){toast('这个链接地址不支持');return;}
+  if(!/^(https?:|mailto:)/i.test(url))url='https://'+url.replace(/^\/+/,'');
+  const label=esc(txt||url);
+  const html='<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+'</a>&nbsp;';
+  /* 光标落在已有链接里时，execCommand 会直接把这段文字变成链接，比插入新节点更符合直觉 */
+  const inLink=(function(){try{const s=window.getSelection();if(!s.rangeCount)return false;let n=s.getRangeAt(0).startContainer;while(n&&n!==document.body){if(n.nodeName==='A')return true;n=n.parentNode;}return false;}catch(e){return false;}})();
+  if(inLink&&!txt){
+    ideaInsertHtml('<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(url)+'</a>&nbsp;');
+  }else{
+    ideaInsertHtml(html);
+  }
+  ideaLinkClose();
+  toast('链接已插入 🔗');
+}
+
+/* ---------- 图片：压缩后内嵌成 data URL ---------- */
+function ideaPickImage(){
+  if(!ideaEditable()){toast('先新建或选一条草稿');return;}
+  ideaRangeSave();
+  const f=document.getElementById('ideaFile');if(!f)return;
+  f.value='';f.click();
+}
+function ideaBindFile(){
+  const f=document.getElementById('ideaFile');if(!f||f.__b)return;f.__b=1;
+  f.addEventListener('change',()=>{const fs=[].slice.call(f.files||[]);if(fs.length)ideaFiles(fs);f.value='';});
+}
+function ideaFiles(files){
+  if(!ideaEditable()){toast('先新建或选一条草稿');return;}
+  const arr=[].slice.call(files||[]).slice(0,6);   // 一次最多 6 张，避免误选整个文件夹卡住
+  if(!arr.length)return;
+  const total=arr.length;let done=0,fail=0;
+  toast('正在压缩 '+total+' 张图片…');
+  arr.forEach(f=>{
+    if(f.size>12*1024*1024){fail++;done++;return;}
+    ideaCompress(f).then(res=>{
+      ideaInsertHtml('<img src="'+res.src+'" alt="" style="width:'+(res.w>620?'620px':'100%')+'">');
+    }).catch(()=>{fail++;}).then(()=>{
+      done++;
+      if(done===total){
+        ideaSaveCur();
+        toast(fail?(fail+' 张图片读取失败'):('已插入 '+total+' 张图片 🖼'));
+      }
+    });
+  });
+}
+function ideaCompress(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        try{
+          let w=im.naturalWidth||im.width,h=im.naturalHeight||im.height;
+          const sc=Math.min(1,IDEA_MAXW/Math.max(w,h));
+          w=Math.max(1,Math.round(w*sc));h=Math.max(1,Math.round(h*sc));
+          const c=document.createElement('canvas');c.width=w;c.height=h;
+          const ctx=c.getContext('2d');
+          ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,w,h);          // 透明 PNG 统一铺白，深色模式下不会发灰
+          ctx.drawImage(im,0,0,w,h);
+          let out=c.toDataURL('image/webp',IDEA_Q);
+          if(out.indexOf('data:image/webp')<0)out=c.toDataURL('image/jpeg',IDEA_Q);
+          res({src:out,w:w,h:h});
+        }catch(e){rej(e);}
+      };
+      im.onerror=()=>rej(new Error('decode'));
+      im.src=fr.result;
+    };
+    fr.onerror=()=>rej(new Error('read'));
+    fr.readAsDataURL(file);
+  });
+}
+function ideaImgSelect(img){
+  if(ideaImgEl&&ideaImgEl!==img)ideaImgEl.classList.remove('sel');
+  ideaImgEl=img;img.classList.add('sel');
+  const bar=document.getElementById('ideaImgBar');if(!bar)return;
+  bar.classList.add('show');
+  const r=img.getBoundingClientRect(),bw=bar.offsetWidth||240;
+  const left=Math.max(10,Math.min(r.left+r.width/2-bw/2,innerWidth-bw-10));
+  let top=r.top-48;if(top<10)top=r.bottom+10;
+  bar.style.left=left+'px';bar.style.top=top+'px';
+}
+function ideaHideImgBar(){
+  const bar=document.getElementById('ideaImgBar');if(bar)bar.classList.remove('show');
+  if(ideaImgEl){ideaImgEl.classList.remove('sel');ideaImgEl=null;}
+}
+function ideaImgWidth(w){
+  if(!ideaImgEl)return;
+  if(w){ideaImgEl.style.width=w;ideaImgEl.style.height='auto';}
+  else{ideaImgEl.style.removeProperty('width');ideaImgEl.style.removeProperty('height');}
+  ideaImgSelect(ideaImgEl);ideaSaveCur();
+}
+function ideaImgDel(){
+  if(!ideaImgEl)return;
+  const el=ideaImgEl;ideaHideImgBar();el.remove();ideaSaveCur();ideaUpdateStat();toast('图片已删除');
+}
+function ideaOnDrop(e){
+  const dt=e.dataTransfer;if(!dt)return;
+  const fs=[].slice.call(dt.files||[]).filter(x=>/^image\//i.test(x.type));
+  if(!fs.length)return;
+  e.preventDefault();
+  if(!ideaEditable()){toast('先新建或选一条草稿');return;}
+  ideaRangeSave();ideaFiles(fs);
+}
+function ideaOnPaste(e){
+  if(!ideaEditable())return;
+  const cd=e.clipboardData||window.clipboardData;if(!cd)return;
+  const imgs=[];
+  if(cd.items)for(let i=0;i<cd.items.length;i++){
+    const it=cd.items[i];
+    if(it.kind==='file'&&/^image\//i.test(it.type)){const f=it.getAsFile();if(f)imgs.push(f);}
+  }
+  if(imgs.length){e.preventDefault();ideaRangeSave();ideaFiles(imgs);return;}
+  /* 其余一律转纯文本：带进来的网页样式会污染纸面底纹 */
+  const txt=cd.getData?cd.getData('text/plain'):'';
+  if(txt){e.preventDefault();ideaRangeSave();ideaInsertText(txt);}
+}
+function ideaBindImgBar(){
+  const bar=document.getElementById('ideaImgBar');if(!bar||bar.__b)return;bar.__b=1;
+  bar.addEventListener('mousedown',e=>e.preventDefault());
+  bar.addEventListener('click',e=>{
+    const b=e.target.closest?e.target.closest('button'):null;if(!b)return;
+    if(b.getAttribute('data-imgdel')){ideaImgDel();return;}
+    if(b.hasAttribute('data-w'))ideaImgWidth(b.getAttribute('data-w'));
+  });
+}
+function ideaBindBar(){
+  const bar=document.getElementById('ideaBar');if(!bar||bar.__b)return;bar.__b=1;
+  /* mousedown 阻止默认：否则点工具按钮会先把编辑区失焦，选区丢了格式就不生效 */
+  bar.addEventListener('mousedown',e=>{
+    const b=e.target.closest?e.target.closest('button'):null;
+    if(b&&!b.hasAttribute('data-paper'))e.preventDefault();
+  });
+  bar.addEventListener('click',e=>{
+    const b=e.target.closest?e.target.closest('button'):null;if(!b)return;
+    if(b.hasAttribute('data-paper')){ideaSetPaper(b.getAttribute('data-paper'));return;}
+    if(b.hasAttribute('data-block')){ideaBlock(b.getAttribute('data-block'));return;}
+    if(b.hasAttribute('data-size')){ideaFont(+b.getAttribute('data-size'));return;}
+    if(b.hasAttribute('data-cmd')){ideaExec(b.getAttribute('data-cmd'));return;}
+  });
+}
+function ideaBindEditor(){
+  const b=document.getElementById('ideaBody'),t=document.getElementById('ideaTitle');
+  if(!b||!t)return;
+  if(!b.__b){
+    b.__b=1;
+    b.addEventListener('input',()=>{ideaOnEdit();ideaUpdateStat();});
+    b.addEventListener('keyup',ideaRangeSave);
+    b.addEventListener('mouseup',ideaRangeSave);
+    b.addEventListener('paste',ideaOnPaste);
+    b.addEventListener('drop',ideaOnDrop);
+    b.addEventListener('dragover',e=>{if(e.dataTransfer&&/image/i.test(e.dataTransfer.types?Array.prototype.join.call(e.dataTransfer.types,','):''))e.preventDefault();});
+    b.addEventListener('click',e=>{if(e.target.tagName==='IMG')ideaImgSelect(e.target);else ideaHideImgBar();});
+    b.addEventListener('keydown',e=>{if(e.key==='Escape'){ideaHideImgBar();ideaLinkClose();}});
+    document.addEventListener('selectionchange',()=>{
+      const v=document.getElementById('view-ideas');
+      if(v&&v.classList.contains('active'))ideaRangeSave();
+    });
+    document.addEventListener('mousedown',e=>{
+      const ib=document.getElementById('ideaImgBar'),lp=document.getElementById('ideaLinkPop');
+      if(ib&&ib.classList.contains('show')&&!(e.target.closest&&e.target.closest('#ideaImgBar'))&&!(e.target.closest&&e.target.closest('#ideaBody')))ideaHideImgBar();
+      if(lp&&lp.classList.contains('show')&&!(e.target.closest&&e.target.closest('#ideaLinkPop'))&&!(e.target.closest&&e.target.closest('#ideaBar')))ideaLinkClose();
+    });
+  }
+  if(!t.__b){
+    t.__b=1;
+    t.addEventListener('input',()=>{ideaOnEdit();ideaUpdateStat();});
+    t.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();b.focus();ideaRange=null;}});
+  }
+}
+
+/* ---------- 云同步（独立房间） ---------- */
+function ideaRoom(){return syncRoom?(syncRoom+IDEA_ROOM_SUFFIX):'';}
+function ideaLocal(){ideaStore();return {ideas:IDEAS.ideas,deleted:IDEAS.deleted,meta:IDEAS.meta};}
+function ideaSyncMark(ok){
+  ideaSyncState=ok?'ok':'bad';ideaSyncAt=Date.now();
+  const el=document.getElementById('ideaSyncTxt');if(!el)return;
+  el.className='idea-syncline'+(ok?' ok':' bad');
+  el.textContent=(ok?'☁️ 已同步 ':'⚠️ 同步失败 ')+ideaTimeText(ideaSyncAt);
+}
+function ideaSyncLine(){
+  const el=document.getElementById('ideaSyncTxt');if(!el)return;
+  if(!ideaRoom()){el.className='idea-syncline';el.textContent='未连接云同步（去「多设备同步」填口令即可跨设备）';return;}
+  if(!ideaSyncState){el.className='idea-syncline';el.textContent='正在同步…';return;}
+  ideaSyncMark(ideaSyncState==='ok');
+}
+async function ideaUpsert(){
+  const room=ideaRoom();if(!room)return false;
+  if(ideaUpserting)return false;
+  ideaUpserting=true;
+  try{
+    const body=JSON.stringify([{room:room,data:ideaLocal(),updated_at:new Date().toISOString()}]);
+    const r=await fetch(SB_URL+'/rest/v1/'+SB_TABLE+'?on_conflict=room',{
+      method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:body
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    ideaSyncMark(true);
+    return true;
+  }catch(e){
+    console.error('[ideas] 推送失败',e);ideaSyncMark(false);return false;
+  }finally{ideaUpserting=false;}
+}
+async function ideaPull(manual){
+  const room=ideaRoom();
+  if(!room){if(manual)toast('先去「多设备同步」填同步口令');return false;}
+  if(ideaPullBusy)return false;
+  ideaPullBusy=true;
+  try{
+    const url=SB_URL+'/rest/v1/'+SB_TABLE+'?room=eq.'+encodeURIComponent(room)+'&select=data';
+    const r=await fetch(url,{headers:sbHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    ideaPulledAt=Date.now();
+    if(!Array.isArray(rows)||!rows.length){
+      if(manual)toast('云端还没有灵感数据，已用本机数据初始化 ☁️');
+      await ideaUpsert();
+      return true;
+    }
+    const remote=rows[0].data;
+    if(!remote||typeof remote!=='object'){ideaSyncMark(true);return false;}
+    const before=JSON.stringify(ideaStore().ideas);
+    const merged=mergeDB(ideaLocal(),remote);      // 复用主库那套「按 id 取较新 + 墓碑」的合并
+    IDEAS.ideas=merged.ideas||[];IDEAS.deleted=merged.deleted||[];IDEAS.meta=merged.meta||{updatedAt:0};
+    const changed=JSON.stringify(IDEAS.ideas)!==before;
+    if(changed){
+      try{localStorage.setItem(IDEA_KEY,JSON.stringify(IDEAS));}catch(e){}
+      renderIdeas();
+    }
+    ideaSyncMark(true);
+    if(manual)toast(changed?'已同步云端最新灵感 ✅':'灵感已是最新');
+    return true;
+  }catch(e){
+    console.error('[ideas] 拉取失败',e);ideaSyncMark(false);
+    if(manual)toast('灵感同步失败，请检查网络');
+    return false;
+  }finally{ideaPullBusy=false;}
+}
+async function ideaPush(){
+  const room=ideaRoom();if(!room)return;
+  try{await ideaPull(false);}catch(e){}
+  await ideaUpsert();
+}
+function ideaSchedulePush(){
+  if(!ideaRoom())return;
+  clearTimeout(ideaPushTimer);
+  ideaPushTimer=setTimeout(ideaPush,2500);
+}
+
+function renderIdeas(){
+  ideaStore();
+  ideaBindList();ideaBindEditor();ideaBindBar();ideaBindImgBar();ideaBindFile();
+  if(!ideaCurId||!IDEAS.ideas.some(n=>n.id===ideaCurId))ideaCurId=(ideaSorted()[0]||{}).id||null;
+  ideaRenderList();ideaShow(ideaCurId);ideaMeter();ideaSyncLine();
+  if(ideaRoom()&&Date.now()-ideaPulledAt>60000)ideaPull(false);   // 打开时顺手拉一次，60s 内不重复拉
 }
 
 /* ================================================================
