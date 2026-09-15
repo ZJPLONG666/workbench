@@ -1878,7 +1878,10 @@ function kbDrop(e){
    自动把这些任务的日期滚到当天、完成状态清零 —— 省掉每天重填一遍。 */
 function kbSaveLane(laneId){
   const lane=(KB_LANES.work||[]).find(l=>l.id===laneId);
-  const ids=kbLaneTasks('work',laneId).map(t=>t.id);
+  /* 只登记「今天」显示在这一格里的任务，让提示条数与看板上的卡片数一致；
+     往期没做完的只在首页「昨日未完成」里，需要先点一下移到今天才会纳入每日重复 */
+  const today=todayStr();
+  const ids=kbLaneTasks('work',laneId).filter(t=>t.date===today).map(t=>t.id);
   if(!ids.length){toast('这一格还没有任务，先添加几条吧');return;}
   DB.kbDaily=DB.kbDaily||{};
   DB.kbDaily[laneId]={ids:ids,savedAt:Date.now(),lastRoll:todayStr()};
