@@ -595,7 +595,7 @@ html[data-theme="dark"] .idea-body a{color:#8CB4FF}
 .idea-imghandle.show{display:block}
 .idea-body img.sel{cursor:nwse-resize}
 
-/* 点链接时的小工具条（链接一律不跳转，只能复制/取消） */
+/* 点链接时的小工具条（点链接在新标签打开，小条用于复制/取消链接） */
 .idea-linkbar{display:none;position:fixed;z-index:220;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--r-pill);
   max-width:min(92vw,430px);background:var(--card-bg);border:1px solid var(--card-border);
   box-shadow:var(--shadow-float);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
@@ -3772,10 +3772,25 @@ function ideaLinkApply(){
     ideaInsertHtml(html);
   }
   ideaLinkClose();
-  toast('链接已插入（不会跳转，点它可复制）🔗');
+  toast('链接已插入（点它会在新标签打开）🔗');
 }
 
-/* ---------- 链接：一律不跳转，点一下只弹小工具条 ---------- */
+/* ---------- 链接：点一下在新标签打开，同时弹小工具条备用 ---------- */
+function ideaOpenLink(a){
+  if(!a)return false;
+  const url=String(a.getAttribute('href')||'').trim();
+  if(!url||url==='#'||/^javascript:/i.test(url))return false;
+  if(!/^(https?:|mailto:)/i.test(url))return false;
+  let w=null;
+  try{w=window.open(url,'_blank');}catch(e){w=null;}
+  if(w){
+    try{w.opener=null;}catch(e){}          // 断开 opener，防新页面反向操作本页
+    toast('已在新标签打开 ↗');
+    return true;
+  }
+  toast('浏览器拦下了弹窗，可点小条里的「复制链接」');   // 退路：复制地址
+  return false;
+}
 function ideaLinkNodeOf(target){
   let n=target;
   while(n&&n!==document.body){if(n.nodeName==='A')return n;n=n.parentNode;}
@@ -4058,12 +4073,12 @@ function ideaBindEditor(){
     b.addEventListener('drop',ideaOnDrop);
     b.addEventListener('dragover',e=>{if(e.dataTransfer&&/image/i.test(e.dataTransfer.types?Array.prototype.join.call(e.dataTransfer.types,','):''))e.preventDefault();});
     b.addEventListener('click',e=>{
-      const a=ideaLinkNodeOf(e.target);          // 链接：拦掉默认跳转，只弹工具条
-      if(a){e.preventDefault();e.stopPropagation();ideaHideImgBar();ideaLinkSelect(a);return;}
+      const a=ideaLinkNodeOf(e.target);          // 链接：新标签打开 + 弹小工具条
+      if(a){e.preventDefault();e.stopPropagation();ideaHideImgBar();ideaLinkSelect(a);ideaOpenLink(a);return;}
       if(e.target.tagName==='IMG')ideaImgSelect(e.target);
       else{ideaHideImgBar();ideaHideLinkBar();}
     });
-    b.addEventListener('auxclick',e=>{if(ideaLinkNodeOf(e.target))e.preventDefault();});   // 中键也不行
+    b.addEventListener('auxclick',e=>{if(e.button!==1&&ideaLinkNodeOf(e.target))e.preventDefault();});   // 中键交给浏览器原生「新标签打开」
     b.addEventListener('load',ideaFloatSync,true);                                          // 图片加载完校正浮层
     b.addEventListener('keydown',e=>{if(e.key==='Escape'){ideaHideImgBar();ideaHideLinkBar();ideaLinkClose();}});
     document.addEventListener('selectionchange',()=>{
