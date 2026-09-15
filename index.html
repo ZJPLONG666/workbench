@@ -585,6 +585,28 @@ html[data-theme="dark"] .idea-body a{color:#8CB4FF}
 .idea-imgbar button:hover{background:var(--field-bg)}
 .idea-imgbar button.del{color:#D24B4B}
 .idea-imgbar button.del:hover{background:rgba(210,75,75,.14)}
+.idea-imgbar button.ico{font-size:14px;font-weight:800;line-height:1;padding:3px 10px}
+.idea-imgbar .pct{min-width:40px;text-align:center;font-variant-numeric:tabular-nums;user-select:none}
+.idea-imgbar .sep{display:block;width:1px;height:15px;background:var(--hairline);margin:0 3px;flex-shrink:0}
+/* 图片右下角的缩放手柄：拖着改大小 */
+.idea-imghandle{display:none;position:fixed;z-index:221;width:18px;height:18px;border-radius:5px;
+  background:var(--badge-bg);border:2px solid var(--card-bg);box-shadow:var(--shadow-sm);
+  cursor:nwse-resize;touch-action:none}
+.idea-imghandle.show{display:block}
+.idea-body img.sel{cursor:nwse-resize}
+
+/* 点链接时的小工具条（链接一律不跳转，只能复制/取消） */
+.idea-linkbar{display:none;position:fixed;z-index:220;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--r-pill);
+  max-width:min(92vw,430px);background:var(--card-bg);border:1px solid var(--card-border);
+  box-shadow:var(--shadow-float);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur)}
+.idea-linkbar.show{display:flex}
+.idea-linkbar span{font-size:11px;font-weight:800;color:var(--ink-2);padding:0 4px;max-width:170px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idea-linkbar button{border:none;background:transparent;color:var(--ink);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:var(--r-pill);cursor:pointer;font-family:inherit;flex-shrink:0}
+.idea-linkbar button:hover{background:var(--field-bg)}
+.idea-linkbar button.del{color:#D24B4B}
+.idea-linkbar button.del:hover{background:rgba(210,75,75,.14)}
+.idea-body a.sel{outline:2px solid var(--badge-bg);outline-offset:2px;border-radius:4px}
 
 /* 插入链接小面板（不用 prompt：无头环境会阻塞） */
 .idea-linkpop{display:none;position:fixed;z-index:220;width:min(92vw,330px);padding:13px 14px;border-radius:var(--r-lg);
@@ -1238,11 +1260,19 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
 
     <div class="idea-imgbar" id="ideaImgBar">
       <span>图片</span>
-      <button data-w="30%">小</button>
-      <button data-w="60%">中</button>
-      <button data-w="100%">大</button>
-      <button data-w="">原图</button>
+      <button class="ico" data-imgstep="-1" title="缩小 10%">－</button>
+      <span class="pct" id="ideaImgPct">100%</span>
+      <button class="ico" data-imgstep="1" title="放大 10%">＋</button>
+      <i class="sep"></i>
+      <button data-w="" title="恢复图片原始尺寸">原图</button>
       <button class="del" data-imgdel="1">删除</button>
+    </div>
+    <div class="idea-imghandle" id="ideaImgHandle" title="拖动缩放（也可用工具条 － ＋）"></div>
+
+    <div class="idea-linkbar" id="ideaLinkBar">
+      <span id="ideaLinkBarUrl"></span>
+      <button data-linkcopy="1" title="复制链接地址">复制链接</button>
+      <button class="del" data-linkunlink="1" title="把链接变回普通文字">取消链接</button>
     </div>
 
     <div class="idea-linkpop" id="ideaLinkPop">
@@ -3480,7 +3510,7 @@ const IDEA_PAPERS=['plain','line','dot','grid'];
 const IDEA_PAPER_NAME={plain:'纯白',line:'横线',dot:'点状格',grid:'方形格'};
 let IDEAS=null;
 let ideaCurId=null,ideaQuery='',ideaPulledAt=0,ideaUpserting=false,ideaPushTimer=null,ideaPullBusy=false;
-let ideaRange=null,ideaImgEl=null,ideaEditTimer=null,ideaDelArm=null,ideaSyncState='',ideaSyncAt=0;
+let ideaRange=null,ideaImgEl=null,ideaLinkEl=null,ideaEditTimer=null,ideaDelArm=null,ideaSyncState='',ideaSyncAt=0;
 
 /* ---------- 本机存储 ---------- */
 function ideaBlank(){return {ideas:[],deleted:[],meta:{updatedAt:0}};}
@@ -3507,6 +3537,7 @@ function ideaSanitize(html){
     .replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
     .replace(/<\s*(script|style|iframe|object|embed|link|meta|base)\b[^>]*\/?>/gi,'')
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+    .replace(/\sclass\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,'')   // 选中态的 sel 类是 UI 临时标记，不该落库
     .replace(/(href|src)\s*=\s*("[^"]*"|'[^']*')/gi,(m,a0,v)=>/^\s*["']\s*(javascript|data:text\/html)/i.test(v)?a0+'="#"':m);
 }
 function ideaTimeText(ts){
@@ -3624,7 +3655,7 @@ function ideaShow(id){
   const t=document.getElementById('ideaTitle'),b=document.getElementById('ideaBody'),bar=document.getElementById('ideaBar');
   if(!t||!b)return;
   const n=ideaStore().ideas.find(x=>x.id===id);
-  ideaHideImgBar();
+  ideaHideImgBar();ideaHideLinkBar();
   if(!n){
     t.value='';t.disabled=true;
     b.innerHTML='';b.setAttribute('contenteditable','false');b.setAttribute('data-paper','plain');
@@ -3638,6 +3669,7 @@ function ideaShow(id){
   if(bar)bar.classList.remove('off');
   ideaApplyPaper(n.paper||'plain');
   ideaUpdateStat();
+  requestAnimationFrame(ideaFloatSync);   // 图片解码完成后把浮层/手柄对上位置
 }
 function ideaSyncPaperBtns(p){
   document.querySelectorAll('#ideaPapers .idea-paper-b').forEach(x=>x.classList.toggle('on',x.getAttribute('data-paper')===p));
@@ -3731,17 +3763,79 @@ function ideaLinkApply(){
   if(/^javascript:/i.test(url)){toast('这个链接地址不支持');return;}
   if(!/^(https?:|mailto:)/i.test(url))url='https://'+url.replace(/^\/+/,'');
   const label=esc(txt||url);
-  const html='<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+'</a>&nbsp;';
+  const html='<a href="'+esc(url)+'" rel="noopener noreferrer">'+label+'</a>&nbsp;';
   /* 光标落在已有链接里时，execCommand 会直接把这段文字变成链接，比插入新节点更符合直觉 */
   const inLink=(function(){try{const s=window.getSelection();if(!s.rangeCount)return false;let n=s.getRangeAt(0).startContainer;while(n&&n!==document.body){if(n.nodeName==='A')return true;n=n.parentNode;}return false;}catch(e){return false;}})();
   if(inLink&&!txt){
-    ideaInsertHtml('<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(url)+'</a>&nbsp;');
+    ideaInsertHtml('<a href="'+esc(url)+'" rel="noopener noreferrer">'+esc(url)+'</a>&nbsp;');
   }else{
     ideaInsertHtml(html);
   }
   ideaLinkClose();
-  toast('链接已插入 🔗');
+  toast('链接已插入（不会跳转，点它可复制）🔗');
 }
+
+/* ---------- 链接：一律不跳转，点一下只弹小工具条 ---------- */
+function ideaLinkNodeOf(target){
+  let n=target;
+  while(n&&n!==document.body){if(n.nodeName==='A')return n;n=n.parentNode;}
+  return null;
+}
+function ideaLinkSelect(a){
+  if(ideaLinkEl&&ideaLinkEl!==a)ideaLinkEl.classList.remove('sel');
+  ideaLinkEl=a;a.classList.add('sel');
+  const bar=document.getElementById('ideaLinkBar');if(!bar)return;
+  const u=document.getElementById('ideaLinkBarUrl');
+  if(u)u.textContent=String(a.getAttribute('href')||'').replace(/^mailto:/i,'✉ ');
+  bar.classList.add('show');ideaFloatPos(bar,a,10);
+}
+function ideaHideLinkBar(){
+  const bar=document.getElementById('ideaLinkBar');if(bar)bar.classList.remove('show');
+  if(ideaLinkEl){ideaLinkEl.classList.remove('sel');ideaLinkEl=null;}
+}
+/* 同步复制：不依赖 clipboard API 与安全上下文，file:// 下也能用 */
+function ideaSyncCopy(txt){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=txt;ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.left='-9999px';ta.style.top='0';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();ta.setSelectionRange(0,txt.length);
+    const ok=document.execCommand('copy');
+    ta.remove();ideaRestoreRange();          // 别把编辑区的光标弄丢
+    return !!ok;
+  }catch(e){ideaRestoreRange();return false;}
+}
+function ideaLinkCopy(){
+  if(!ideaLinkEl)return;
+  const url=String(ideaLinkEl.getAttribute('href')||'');
+  if(!url){toast('这条链接没有地址');return;}
+  if(ideaSyncCopy(url)){toast('链接已复制 🔗');return;}
+  /* 退路：异步 clipboard API（可能弹权限框，成功与否都会给反馈） */
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    toast('复制失败，链接地址：'+url);
+    navigator.clipboard.writeText(url).then(()=>toast('链接已复制 🔗'),()=>{});
+    return;
+  }
+  toast('复制失败，链接地址：'+url);
+}
+function ideaLinkUnlink(){
+  if(!ideaLinkEl)return;
+  const a=ideaLinkEl,txt=a.textContent||a.getAttribute('href')||'';
+  const t=document.createTextNode(txt);
+  a.parentNode.replaceChild(t,a);
+  ideaHideLinkBar();ideaSaveCur();ideaUpdateStat();toast('已取消链接');
+}
+function ideaBindLinkBar(){
+  const bar=document.getElementById('ideaLinkBar');if(!bar||bar.__b)return;bar.__b=1;
+  bar.addEventListener('mousedown',e=>e.preventDefault());
+  bar.addEventListener('click',e=>{
+    const b=e.target.closest?e.target.closest('button'):null;if(!b)return;
+    if(b.getAttribute('data-linkcopy')){ideaLinkCopy();return;}
+    if(b.getAttribute('data-linkunlink')){ideaLinkUnlink();return;}
+  });
+}
+function ideaBindHandleAndFloat(){ideaBindHandle();ideaBindFloatSync();}
 
 /* ---------- 图片：压缩后内嵌成 data URL ---------- */
 function ideaPickImage(){
@@ -3799,18 +3893,54 @@ function ideaCompress(file){
     fr.readAsDataURL(file);
   });
 }
+/* 浮层定位：工具条挂在目标元素正上方（放不下就挂下方），左右不出屏 */
+function ideaFloatPos(el,node,gap){
+  if(!el||!node)return;
+  const r=node.getBoundingClientRect();
+  const bw=el.offsetWidth||240,bh=el.offsetHeight||36;
+  const left=Math.max(10,Math.min(r.left+r.width/2-bw/2,innerWidth-bw-10));
+  let top=r.top-(bh+gap);if(top<10)top=Math.min(r.bottom+gap,innerHeight-bh-10);
+  el.style.left=Math.round(left)+'px';el.style.top=Math.round(top)+'px';
+}
+/* 宽度的百分比基准 = 纸面可写宽度（扣掉左右内边距），跨设备都按纸宽算 */
+function ideaImgPaperW(){
+  const b=document.getElementById('ideaBody');if(!b)return 600;
+  const cs=getComputedStyle(b);
+  return Math.max(120,b.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0));
+}
+function ideaImgPct(img){
+  img=img||ideaImgEl;if(!img)return 100;
+  /* 已经是百分比宽度：直接用它，别去量还没解码完的图（否则会算出 1% 这种错值） */
+  const st=img.style.width||'';
+  if(/%$/.test(st)){const v=parseFloat(st);if(v>0)return Math.max(1,Math.min(100,Math.round(v)));}
+  const pw=ideaImgPaperW();
+  let w=img.getBoundingClientRect().width;
+  if(!(w>1)||!img.complete){
+    const nw=img.naturalWidth||0;              // 还没解码：按解码后的预期宽度估算
+    w=nw?Math.min(nw,pw):pw;
+  }
+  return Math.max(1,Math.min(100,Math.round(w/pw*100)));
+}
+function ideaHandlePos(img){
+  const h=document.getElementById('ideaImgHandle');if(!h)return;
+  img=img||ideaImgEl;
+  if(!img||!img.classList.contains('sel')){h.classList.remove('show');return;}
+  const r=img.getBoundingClientRect();
+  h.style.left=Math.round(r.right-9)+'px';
+  h.style.top=Math.round(r.bottom-9)+'px';
+  h.classList.add('show');
+}
 function ideaImgSelect(img){
   if(ideaImgEl&&ideaImgEl!==img)ideaImgEl.classList.remove('sel');
   ideaImgEl=img;img.classList.add('sel');
   const bar=document.getElementById('ideaImgBar');if(!bar)return;
   bar.classList.add('show');
-  const r=img.getBoundingClientRect(),bw=bar.offsetWidth||240;
-  const left=Math.max(10,Math.min(r.left+r.width/2-bw/2,innerWidth-bw-10));
-  let top=r.top-48;if(top<10)top=r.bottom+10;
-  bar.style.left=left+'px';bar.style.top=top+'px';
+  const pct=document.getElementById('ideaImgPct');if(pct)pct.textContent=ideaImgPct(img)+'%';
+  ideaFloatPos(bar,img,10);ideaHandlePos(img);
 }
 function ideaHideImgBar(){
   const bar=document.getElementById('ideaImgBar');if(bar)bar.classList.remove('show');
+  const h=document.getElementById('ideaImgHandle');if(h)h.classList.remove('show');
   if(ideaImgEl){ideaImgEl.classList.remove('sel');ideaImgEl=null;}
 }
 function ideaImgWidth(w){
@@ -3818,6 +3948,53 @@ function ideaImgWidth(w){
   if(w){ideaImgEl.style.width=w;ideaImgEl.style.height='auto';}
   else{ideaImgEl.style.removeProperty('width');ideaImgEl.style.removeProperty('height');}
   ideaImgSelect(ideaImgEl);ideaSaveCur();
+}
+/* 放大 / 缩小：按纸宽的 10% 一档，10%~100% */
+function ideaImgStep(d){
+  if(!ideaImgEl)return;
+  const pct=Math.max(10,Math.min(100,ideaImgPct()+d*10));
+  ideaImgEl.style.width=pct+'%';ideaImgEl.style.height='auto';
+  ideaImgSelect(ideaImgEl);ideaSaveCur();ideaUpdateStat();
+}
+function ideaBindHandle(){
+  const h=document.getElementById('ideaImgHandle');if(!h||h.__b)return;h.__b=1;
+  let dragging=false,startX=0,baseW=0;
+  h.addEventListener('pointerdown',e=>{
+    if(!ideaImgEl)return;
+    e.preventDefault();
+    dragging=true;startX=e.clientX;baseW=ideaImgEl.getBoundingClientRect().width;
+    try{h.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  h.addEventListener('pointermove',e=>{
+    if(!dragging||!ideaImgEl)return;
+    e.preventDefault();
+    const pct=Math.max(10,Math.min(100,Math.round((baseW+(e.clientX-startX))/ideaImgPaperW()*100)));
+    ideaImgEl.style.width=pct+'%';ideaImgEl.style.height='auto';
+    const p=document.getElementById('ideaImgPct');if(p)p.textContent=pct+'%';
+    ideaHandlePos(ideaImgEl);ideaFloatPos(document.getElementById('ideaImgBar'),ideaImgEl,10);
+  });
+  const end=()=>{if(!dragging)return;dragging=false;ideaHandlePos(ideaImgEl);ideaSaveCur();ideaUpdateStat();};
+  h.addEventListener('pointerup',end);
+  h.addEventListener('pointercancel',end);
+}
+/* 滚动 / 改窗口 / 图片解码完成时，浮层与百分比跟着目标走 */
+function ideaFloatSync(){
+  const v=document.getElementById('view-ideas');
+  if(!v||!v.classList.contains('active'))return;
+  const bar=document.getElementById('ideaImgBar');
+  if(ideaImgEl&&bar&&bar.classList.contains('show')){
+    ideaFloatPos(bar,ideaImgEl,10);ideaHandlePos(ideaImgEl);
+    /* 图片刚解码完才有真实尺寸：重算一次，避免标签停在选中的那一瞬 */
+    const p=document.getElementById('ideaImgPct');
+    if(p)p.textContent=ideaImgPct(ideaImgEl)+'%';
+  }
+  const lb=document.getElementById('ideaLinkBar');
+  if(ideaLinkEl&&lb&&lb.classList.contains('show'))ideaFloatPos(lb,ideaLinkEl,10);
+}
+function ideaBindFloatSync(){
+  if(window.__ideaFloat)return;window.__ideaFloat=1;
+  window.addEventListener('scroll',ideaFloatSync,true);
+  window.addEventListener('resize',ideaFloatSync);
 }
 function ideaImgDel(){
   if(!ideaImgEl)return;
@@ -3850,6 +4027,7 @@ function ideaBindImgBar(){
   bar.addEventListener('click',e=>{
     const b=e.target.closest?e.target.closest('button'):null;if(!b)return;
     if(b.getAttribute('data-imgdel')){ideaImgDel();return;}
+    if(b.hasAttribute('data-imgstep')){ideaImgStep(+b.getAttribute('data-imgstep'));return;}
     if(b.hasAttribute('data-w'))ideaImgWidth(b.getAttribute('data-w'));
   });
 }
@@ -3879,16 +4057,25 @@ function ideaBindEditor(){
     b.addEventListener('paste',ideaOnPaste);
     b.addEventListener('drop',ideaOnDrop);
     b.addEventListener('dragover',e=>{if(e.dataTransfer&&/image/i.test(e.dataTransfer.types?Array.prototype.join.call(e.dataTransfer.types,','):''))e.preventDefault();});
-    b.addEventListener('click',e=>{if(e.target.tagName==='IMG')ideaImgSelect(e.target);else ideaHideImgBar();});
-    b.addEventListener('keydown',e=>{if(e.key==='Escape'){ideaHideImgBar();ideaLinkClose();}});
+    b.addEventListener('click',e=>{
+      const a=ideaLinkNodeOf(e.target);          // 链接：拦掉默认跳转，只弹工具条
+      if(a){e.preventDefault();e.stopPropagation();ideaHideImgBar();ideaLinkSelect(a);return;}
+      if(e.target.tagName==='IMG')ideaImgSelect(e.target);
+      else{ideaHideImgBar();ideaHideLinkBar();}
+    });
+    b.addEventListener('auxclick',e=>{if(ideaLinkNodeOf(e.target))e.preventDefault();});   // 中键也不行
+    b.addEventListener('load',ideaFloatSync,true);                                          // 图片加载完校正浮层
+    b.addEventListener('keydown',e=>{if(e.key==='Escape'){ideaHideImgBar();ideaHideLinkBar();ideaLinkClose();}});
     document.addEventListener('selectionchange',()=>{
       const v=document.getElementById('view-ideas');
       if(v&&v.classList.contains('active'))ideaRangeSave();
     });
     document.addEventListener('mousedown',e=>{
-      const ib=document.getElementById('ideaImgBar'),lp=document.getElementById('ideaLinkPop');
-      if(ib&&ib.classList.contains('show')&&!(e.target.closest&&e.target.closest('#ideaImgBar'))&&!(e.target.closest&&e.target.closest('#ideaBody')))ideaHideImgBar();
-      if(lp&&lp.classList.contains('show')&&!(e.target.closest&&e.target.closest('#ideaLinkPop'))&&!(e.target.closest&&e.target.closest('#ideaBar')))ideaLinkClose();
+      const ib=document.getElementById('ideaImgBar'),lp=document.getElementById('ideaLinkPop'),lb=document.getElementById('ideaLinkBar');
+      const hit=(sel)=>e.target.closest&&e.target.closest(sel);
+      if(ib&&ib.classList.contains('show')&&!hit('#ideaImgBar')&&!hit('#ideaImgHandle')&&!hit('#ideaBody'))ideaHideImgBar();
+      if(lp&&lp.classList.contains('show')&&!hit('#ideaLinkPop')&&!hit('#ideaBar'))ideaLinkClose();
+      if(lb&&lb.classList.contains('show')&&!hit('#ideaLinkBar')&&!hit('#ideaBody'))ideaHideLinkBar();
     });
   }
   if(!t.__b){
@@ -3977,7 +4164,7 @@ function ideaSchedulePush(){
 
 function renderIdeas(){
   ideaStore();
-  ideaBindList();ideaBindEditor();ideaBindBar();ideaBindImgBar();ideaBindFile();
+  ideaBindList();ideaBindEditor();ideaBindBar();ideaBindImgBar();ideaBindFile();ideaBindLinkBar();ideaBindHandleAndFloat();
   if(!ideaCurId||!IDEAS.ideas.some(n=>n.id===ideaCurId))ideaCurId=(ideaSorted()[0]||{}).id||null;
   ideaRenderList();ideaShow(ideaCurId);ideaMeter();ideaSyncLine();
   if(ideaRoom()&&Date.now()-ideaPulledAt>60000)ideaPull(false);   // 打开时顺手拉一次，60s 内不重复拉
