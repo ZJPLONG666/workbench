@@ -439,6 +439,30 @@ html[data-theme="dark"] .kb-column[data-column="work"] .kb-lane{background:rgba(
 .kb-due{margin-left:auto;font-size:11px;color:var(--ink-2);display:flex;align-items:center;gap:3px;cursor:pointer;user-select:none;padding:2px 5px;border-radius:6px}
 .kb-due:hover{background:rgba(255,255,255,.4)}
 .kb-due.overdue{color:#ef4444;font-weight:700}
+/* ---- 深色模式下标题配色（原先把 #141414 写死，深色卡片上几乎看不见）---- */
+:root{--kb-title-c:#141414}
+html[data-theme="dark"]{--kb-title-c:#EDEDF0}
+/* ---- 已完成任务：整行变灰 + 斜线划掉 ---- */
+.kb-card.finished{opacity:.58;filter:grayscale(.9);box-shadow:none}
+.kb-card.finished:hover{transform:none;box-shadow:var(--shadow-sm)}
+.kb-card.finished .kb-title{color:var(--ink-2)!important}
+.kb-card.finished .kb-title,.kb-card.finished .kb-due,.kb-card.finished .kb-prio{text-decoration:line-through}
+.kb-fin{flex-shrink:0;padding:2px 9px;border-radius:7px;font-size:11px;font-weight:700;line-height:1.5;cursor:pointer;user-select:none;
+  white-space:nowrap;border:1.5px solid var(--hairline);background:var(--surface);color:var(--ink-2);transition:all .15s}
+.kb-fin:hover{border-color:#7FB069;color:#52803C;transform:scale(1.06)}
+.kb-fin.on{background:#7FB069;border-color:#7FB069;color:#fff}
+.kb-fin.on:hover{background:#6EA15B;border-color:#6EA15B;color:#fff}
+/* ---- 「保存任务」（段头右上角）：配色跟名字卡同族，啊鹏灰蓝 / 啊盈红灰 ---- */
+.kb-save{margin-left:6px;padding:3px 11px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+  border:1.5px solid var(--kb-save-bd);background:var(--kb-save-bg);color:var(--kb-save-fg);transition:all .15s}
+.kb-save:hover{background:var(--kb-save-hb);border-color:var(--kb-save-hb);color:#fff}
+.kb-lane[data-lane="peng"]{--kb-save-bd:rgba(124,144,168,.5);--kb-save-bg:rgba(255,255,255,.62);--kb-save-fg:#586B81;--kb-save-hb:#7C90A8}
+.kb-lane[data-lane="ying"]{--kb-save-bd:rgba(171,122,126,.5);--kb-save-bg:rgba(255,255,255,.62);--kb-save-fg:#8A5A60;--kb-save-hb:#AB7A7E}
+.kb-save.on{background:rgba(127,176,105,.18);border-color:rgba(127,176,105,.65);color:#4E7A3A}
+.kb-save.on:hover{background:rgba(127,176,105,.32);color:#3F6630}
+html[data-theme="dark"] .kb-lane[data-lane="peng"],html[data-theme="dark"] .kb-lane[data-lane="ying"]{
+  --kb-save-bg:rgba(255,255,255,.12);--kb-save-bd:rgba(255,255,255,.22);--kb-save-fg:#D3DCE6}
+html[data-theme="dark"] .kb-lane .kb-save.on{background:rgba(127,176,105,.26);border-color:rgba(127,176,105,.6);color:#C6E5B6}
 .due-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;background:var(--pink-soft);color:var(--ink);padding:1px 7px;border-radius:999px;margin-left:6px}
 .due-chip.over{background:#ef4444;color:#fff}
 .cal-clock{display:inline-block;font-size:8px;line-height:1;background:var(--badge-bg);color:var(--yellow);border-radius:4px;padding:1px 2px;margin-top:1px}
@@ -847,6 +871,11 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           <div class="ki"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></div>
           <div class="kl">待处理购物清单</div><div class="kv" id="kpiIssues">0</div>
         </div>
+      </div>
+
+      <div class="home-card pc-full" id="homeOverdueCard" style="display:none">
+        <div class="card-h"><b>昨日未完成</b><span class="go" onclick="openApp('kanban')">进入看板</span></div>
+        <div id="homeOverdueRows"></div>
       </div>
 
       <div class="pc-full">
@@ -1607,7 +1636,7 @@ function renderHeader(){
 function renderHome(){
   const t=todayStr();
   const tasks=DB.tasks.filter(x=>x.date===t);
-  const undone=tasks.filter(x=>x.status!=='done').slice(0,4);
+  const undone=tasks.filter(x=>x.status!=='done'&&!x.finished).slice(0,4);
   document.getElementById('homeTaskRows').innerHTML=undone.length?undone.map(x=>{
     const over=x.due && !isNaN(new Date(x.due)) && new Date(x.due)<=new Date() && x.status!=='done';
     const dueText=x.due?dueTimeText(x):(x.date<t?'已逾期':'今天');
@@ -1618,6 +1647,18 @@ function renderHome(){
       <span class="t">${dueText}</span>
     </div>`;
   }).join(''):`<div class="rowi" style="justify-content:center;color:var(--ink-2)"><span>今日任务全部完成啦 🎉</span></div>`;
+  /* 往期没做完的（工作区每天滚动，剩下的是生活/思潼区和一次性的活儿）→ 列到首页提醒 */
+  const over=DB.tasks.filter(x=>x.date&&x.date<t&&x.column!=='done'&&x.status!=='done'&&!x.finished)
+                     .sort((a,b)=>a.date<b.date?1:-1);
+  const oc=document.getElementById('homeOverdueCard');
+  if(oc){
+    oc.style.display=over.length?'':'none';
+    document.getElementById('homeOverdueRows').innerHTML=over.length?over.slice(0,6).map(x=>`<div class="rowi over" onclick="kbMoveToToday('${x.id}')" title="点击移到今天">
+      <span class="rd" style="background:#D96C6C"></span>
+      <span>${esc(x.title)}</span>
+      <span class="t">${x.date.slice(5).replace('-','/')} · ${esc(x.assignee)}</span>
+    </div>`).join('')+(over.length>6?`<div class="rowi" style="justify-content:center;color:var(--ink-2)"><span>还有 ${over.length-6} 条，进入看板查看</span></div>`:''):'';
+  }
   const todaySales=DB.sales.filter(x=>x.date===t);
   const rev=todaySales.reduce((s,x)=>s+x.revenue,0);
   document.getElementById('kpiSales').textContent='¥'+rev.toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -1672,14 +1713,16 @@ function renderKanban(){
   const board=document.getElementById('kbBoard');
   board.innerHTML='';
   KB_COLS.forEach(col=>{
-    const list=kbTasks(col.id);
+    const lanes=KB_LANES[col.id];
+    /* 工作区是「每日重复」区：只显示今天的任务；往期没做完的会列在首页「昨日未完成」 */
+    const list=kbTasks(col.id).filter(t=>lanes?t.date===todayStr():true);
     const vis=list.filter(kbVisible);
     const colEl=document.createElement('div');
     colEl.className='kb-column';colEl.dataset.column=col.id;
-    const lanes=KB_LANES[col.id];
     const lanesHtml=lanes
       ? lanes.map(l=>`<div class="kb-lane" data-column="${col.id}" data-lane="${l.id}" data-assignee="${l.assignee}">
-          <div class="kb-lane-head"><span class="kb-nameplate ${l.cls}">${l.name}</span><span class="kb-count">${vis.filter(t=>kbLaneOf(t)===l.id).length}</span></div>
+          <div class="kb-lane-head"><span class="kb-nameplate ${l.cls}">${l.name}</span><span class="kb-count">${vis.filter(t=>kbLaneOf(t)===l.id).length}</span>
+            <button class="kb-save${(DB.kbDaily&&DB.kbDaily[l.id])?' on':''}" title="把这一格的任务设为每日固定任务：以后每天自动把日期滚到当天、完成状态清零">保存任务</button></div>
           <div class="kb-card-list"></div>
           <button class="kb-add">＋ 新建任务</button>
         </div>`).join('')
@@ -1701,6 +1744,8 @@ function renderKanban(){
       laneEl.addEventListener('dragleave',kbDragLeave);
       laneEl.addEventListener('drop',kbDrop);
       laneEl.querySelector('.kb-add').addEventListener('click',()=>kbCreate(col.id,laneEl.dataset.assignee||null));
+      const svEl=laneEl.querySelector('.kb-save');
+      if(svEl)svEl.addEventListener('click',()=>kbSaveLane(laneEl.dataset.lane));
     });
     board.appendChild(colEl);
   });
@@ -1708,19 +1753,21 @@ function renderKanban(){
 }
 function kbCard(t){
   const el=document.createElement('div');
-  el.className='kb-card'+(kbSelected.has(t.id)?' selected':'')+(kbEditId===t.id?' editing':'');
+  el.className='kb-card'+(t.finished?' finished':'')+(kbSelected.has(t.id)?' selected':'')+(kbEditId===t.id?' editing':'');
   el.dataset.id=t.id;
   const st=t.style||{};
-  /* 工作区按「段」区分归属（段头已有名字卡），卡片上不再重复显示负责人头像 */
-  const showAvatar=!KB_LANES[t.column];
+  /* 工作区分段内：不重复显示负责人头像（段头名字卡已标明）；改为显示「已完成」按钮 */
+  const inLane=!!KB_LANES[t.column];
+  const showAvatar=!inLane,showFinish=inLane;
   el.innerHTML=`
     <span class="kb-drag" draggable="true" title="拖动排序">⠿</span>
     <span class="kb-check" title="选择"></span>
     <div class="kb-body">
       <div class="kb-top">
         <div class="kb-title" contenteditable="${kbEditId===t.id}" spellcheck="false"
-          style="font-size:${st.fontSize||'13.5px'};font-weight:${st.fontWeight||'700'};color:${st.color||'#141414'}">${esc(t.title)}</div>
+          style="font-size:${st.fontSize||'13.5px'};font-weight:${st.fontWeight||'700'};color:${st.color||'var(--kb-title-c)'}">${esc(t.title)}</div>
         <span class="kb-prio ${t.priority.toLowerCase()}" title="点击切换优先级">${t.priority}</span>
+        ${showFinish?`<button class="kb-fin${t.finished?' on':''}" title="点击标记完成，再点一次取消">已完成</button>`:''}
       </div>
       <div class="kb-foot">
         ${showAvatar?`<span class="kb-avatar" style="background:${KB_MEMBER_COLORS[t.assignee]||'#999'}" title="点击更换负责人">${t.assignee==='老婆'?'婆':'曾'}</span>`:''}
@@ -1769,6 +1816,14 @@ function kbCard(t){
     t.assignee=t.assignee==='曾生'?'老婆':'曾生';
     save();renderKanban();toast('已改为 '+t.assignee+' 负责');
   });
+  /* 「已完成」：变灰 + 斜线划掉；再点一次撤销 */
+  const finEl=el.querySelector('.kb-fin');
+  if(finEl)finEl.addEventListener('click',e=>{
+    e.stopPropagation();
+    t.finished=!t.finished;
+    save();renderKanban();renderHome();
+    toast(t.finished?'已完成 ✅':'已取消完成');
+  });
   /* 日期：点击弹小日历 */
   el.querySelector('.kb-due').addEventListener('click',e=>{
     e.stopPropagation();kbOpenCal(e.clientX,e.clientY,t.id);
@@ -1812,9 +1867,53 @@ function kbDrop(e){
   }
   t.column=lane.dataset.column;
   if(lane.dataset.assignee)t.assignee=lane.dataset.assignee;
+  /* 工作区只显示今天：拖进分段即视为纳入今天的清单，否则会被日期过滤掉 */
+  if(lane.dataset.lane){t.date=todayStr();t.dueDate=todayStr().slice(5);}
   t.status=t.column==='done'?'done':'todo';
   t.order=newOrder;
   kbClearIndicators();save();renderKanban();renderCalendar();renderDayTasks();renderHome();
+}
+/* ---- 每日固定任务：就地滚动（不新建记录、不留历史）----
+   「保存任务」把该格任务登记为每日固定；之后每天首次打开工作台时，
+   自动把这些任务的日期滚到当天、完成状态清零 —— 省掉每天重填一遍。 */
+function kbSaveLane(laneId){
+  const lane=(KB_LANES.work||[]).find(l=>l.id===laneId);
+  const ids=kbLaneTasks('work',laneId).map(t=>t.id);
+  if(!ids.length){toast('这一格还没有任务，先添加几条吧');return;}
+  DB.kbDaily=DB.kbDaily||{};
+  DB.kbDaily[laneId]={ids:ids,savedAt:Date.now(),lastRoll:todayStr()};
+  save();renderKanban();renderHome();
+  toast((lane?lane.name+'的':'')+'每日任务已保存（'+ids.length+' 条），往后每天自动重复 ✅');
+}
+function kbRollDaily(){
+  const today=todayStr();
+  const kd=DB.kbDaily; if(!kd)return false;
+  let changed=false;
+  Object.keys(kd).forEach(laneId=>{
+    const set=kd[laneId];
+    if(!set||set.lastRoll===today)return;      // 今天已滚过 → 空转，保证幂等
+    (set.ids||[]).forEach(id=>{
+      const t=DB.tasks.find(x=>x.id===id); if(!t)return;
+      const hh=dueTimeText(t);                  // 保留原截止时刻，只换日期
+      t.date=today; t.dueDate=today.slice(5);
+      if(t.due&&hh)t.due=today+'T'+hh;
+      t.finished=false; t.reminded=false;
+      changed=true;
+    });
+    set.lastRoll=today; changed=true;
+  });
+  if(changed)save();
+  return changed;
+}
+/* 首页「昨日未完成」点击 → 把这条件挪到今天 */
+function kbMoveToToday(id){
+  const t=DB.tasks.find(x=>x.id===id); if(!t)return;
+  const today=todayStr(),hh=dueTimeText(t);
+  t.date=today; t.dueDate=today.slice(5);
+  if(t.due&&hh)t.due=today+'T'+hh;
+  t.reminded=false;
+  save();renderHome();renderKanban();renderCalendar();renderDayTasks();
+  toast('「'+t.title.slice(0,10)+'」已移到今天');
 }
 /* ---- 新建 ---- */
 function kbCreate(colId,assignee){
@@ -2554,6 +2653,20 @@ function mergeDB(local, remote){
     rm.forEach(x=>{ const s=JSON.stringify(x); if(!seen.has(s)){ seen.add(s); arr.push(x); } });
     out[k]=arr;
   });
+  /* 每日任务基准（kbDaily）：mergeDB 只认已登记的集合，新键必须显式合并，
+     否则一台设备「保存任务」另一台永远收不到。按段取 savedAt 较新的一份，
+     lastRoll 取较晚日期，避免两台设备各自重复滚动。 */
+  const lKD=local.kbDaily||{}, rKD=remote.kbDaily||{}, kd={};
+  [...new Set([...Object.keys(lKD),...Object.keys(rKD)])].forEach(k=>{
+    const l=lKD[k], r=rKD[k];
+    if(!l){kd[k]=r;return;}
+    if(!r){kd[k]=l;return;}
+    const useR=(r.savedAt||0)>(l.savedAt||0);
+    kd[k]={ids:(useR?r.ids:l.ids)||[], savedAt:Math.max(l.savedAt||0,r.savedAt||0),
+           lastRoll:[l.lastRoll,r.lastRoll].filter(Boolean).sort().pop()||''};
+  });
+  if(Object.keys(kd).length)out.kbDaily=kd;
+
   out.deleted=[...delSet]; // 墓碑随合并累积，确保删除跨端永久生效
   return out;
 }
@@ -2575,7 +2688,7 @@ async function sbPull(manual){
   const before=JSON.stringify(DB);
   const merged=mergeDB(DB, remote);
   if(JSON.stringify(merged)!==before){
-    DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); refreshCurrentView(); syncSchedulePush();
+    DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); kbRollDaily(); refreshCurrentView(); syncSchedulePush();
     if(manual)toast('已同步最新数据');
   }else if(manual){toast('本地已是最新');}
   syncLastAt=Date.now();renderSyncStatus();
@@ -3096,7 +3209,9 @@ function startReminderLoop(){
 /* ================================================================
    启动
 ================================================================ */
+kbRollDaily();                 // 新的一天：把每日固定任务滚到今天并清零完成状态
 renderHeader();renderHome();
+setInterval(kbRollDaily,60000); // 页面一直开着跨零点也能自动滚动（幂等）
 document.getElementById('taskModal').addEventListener('click',e=>{if(e.target.id==='taskModal')closeTaskModal();});
 document.getElementById('reminderSettings').addEventListener('click',e=>{if(e.target.id==='reminderSettings')closeReminderSettings();});
 if(syncRoom){stampRecords();startSyncLoop();sbPull().catch(()=>{});}  // 有口令即自动连云端（换设备零配置）
