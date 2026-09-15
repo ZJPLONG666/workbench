@@ -666,7 +666,8 @@ html[data-theme="dark"] .shop-select-item.selected{background:rgba(245,213,74,.2
 .pc-grid{display:grid;grid-template-columns:1fr;gap:0;align-items:start}
 @media(min-width:1024px){
   .wrap{max-width:1120px;padding:0 32px}
-  .pc-grid{grid-template-columns:1.5fr 1fr;gap:16px}
+  /* 「今日任务」卡移除后，首页顶层只剩 KPI 一行 → 收成单栏，KPI 两张卡各占一半铺满 */
+  .pc-grid{grid-template-columns:1fr;gap:16px}
   .pc-full{grid-column:1/-1}
   .greet{font-size:52px;margin-top:26px}
   main{padding-bottom:40px!important}
@@ -857,11 +858,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     </div>
 
     <div class="pc-grid">
-      <div class="home-card">
-        <div class="card-h"><b>今日任务</b><span class="go" onclick="openApp('kanban')">进入看板</span></div>
-        <div id="homeTaskRows"></div>
-      </div>
-
       <div class="kpis">
         <div class="kpi k-lime">
           <div class="ki"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-6M11 19v-9M15.5 19v-4M20 19v-8"/></svg></div>
@@ -1635,18 +1631,8 @@ function renderHeader(){
 }
 function renderHome(){
   const t=todayStr();
-  const tasks=DB.tasks.filter(x=>x.date===t);
-  const undone=tasks.filter(x=>x.status!=='done'&&!x.finished).slice(0,4);
-  document.getElementById('homeTaskRows').innerHTML=undone.length?undone.map(x=>{
-    const over=x.due && !isNaN(new Date(x.due)) && new Date(x.due)<=new Date() && x.status!=='done';
-    const dueText=x.due?dueTimeText(x):(x.date<t?'已逾期':'今天');
-    const dotColor=over?'#D96C6C':x.priority==='P0'?'#D96C6C':x.priority==='P1'?'var(--accent)':'#8E8E93';
-    return `<div class="rowi ${over?'over':''}" onclick="openApp('kanban')">
-      <span class="rd" style="background:${dotColor}"></span>
-      <span>${esc(x.title)}</span>
-      <span class="t">${dueText}</span>
-    </div>`;
-  }).join(''):`<div class="rowi" style="justify-content:center;color:var(--ink-2)"><span>今日任务全部完成啦 🎉</span></div>`;
+  /* 「今日任务」板块已于 2026-09-15 应曾生要求从首页移除（看板上已有，无需重复）；
+     「昨日未完成」保留在下方 #homeOverdueCard */
   /* 往期没做完的（工作区每天滚动，剩下的是生活/思潼区和一次性的活儿）→ 列到首页提醒 */
   const over=DB.tasks.filter(x=>x.date&&x.date<t&&x.column!=='done'&&x.status!=='done'&&!x.finished)
                      .sort((a,b)=>a.date<b.date?1:-1);
