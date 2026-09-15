@@ -463,6 +463,25 @@ html[data-theme="dark"]{--kb-title-c:#EDEDF0}
 html[data-theme="dark"] .kb-lane[data-lane="peng"],html[data-theme="dark"] .kb-lane[data-lane="ying"]{
   --kb-save-bg:rgba(255,255,255,.12);--kb-save-bd:rgba(255,255,255,.22);--kb-save-fg:#D3DCE6}
 html[data-theme="dark"] .kb-lane .kb-save.on{background:rgba(127,176,105,.26);border-color:rgba(127,176,105,.6);color:#C6E5B6}
+/* ---- 分格底部「昨日未完成」：往期没做完、看板主列表不显示的（每天都在滚，只显今天）---- */
+.kb-overdue{margin:0 10px 10px;padding:8px 9px;border-radius:var(--r-md);background:rgba(217,108,108,.08);border:1px dashed rgba(217,108,108,.42)}
+.kb-overdue-h{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.kb-overdue-t{font-size:11.5px;font-weight:800;color:#B4544F;letter-spacing:.3px}
+.kb-overdue-n{font-size:10.5px;font-weight:700;color:#fff;background:#D96C6C;border-radius:var(--r-pill);padding:0 6px;line-height:16px}
+.kb-overdue-all{margin-left:auto;padding:2px 9px;border-radius:var(--r-pill);font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+  border:1px solid rgba(217,108,108,.45);background:transparent;color:#B4544F;transition:all .15s}
+.kb-overdue-all:hover{background:#D96C6C;border-color:#D96C6C;color:#fff}
+.kb-overdue-row{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;background:rgba(255,255,255,.66);font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:background .15s,transform .15s}
+.kb-overdue-row+.kb-overdue-row{margin-top:5px}
+.kb-overdue-row:hover{background:rgba(255,255,255,.96);transform:translateX(2px)}
+.kb-overdue-row .rd{width:6px;height:6px;border-radius:50%;background:#D96C6C;flex-shrink:0}
+.kb-overdue-row .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kb-overdue-row .dd{font-size:10.5px;font-weight:600;color:var(--ink-2);flex-shrink:0}
+.kb-overdue-more{margin-top:5px;font-size:11px;color:var(--ink-2);text-align:center}
+html[data-theme="dark"] .kb-overdue{background:rgba(217,108,108,.15);border-color:rgba(217,108,108,.45)}
+html[data-theme="dark"] .kb-overdue-t,html[data-theme="dark"] .kb-overdue-all{color:#F0A9A4}
+html[data-theme="dark"] .kb-overdue-row{background:rgba(255,255,255,.09)}
+html[data-theme="dark"] .kb-overdue-row:hover{background:rgba(255,255,255,.17)}
 .due-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;background:var(--pink-soft);color:var(--ink);padding:1px 7px;border-radius:999px;margin-left:6px}
 .due-chip.over{background:#ef4444;color:#fff}
 .cal-clock{display:inline-block;font-size:8px;line-height:1;background:var(--badge-bg);color:var(--yellow);border-radius:4px;padding:1px 2px;margin-top:1px}
@@ -1672,6 +1691,41 @@ function kbLaneTasks(colId,laneId){
   if(!laneId||!KB_LANES[colId])return list;
   return list.filter(t=>kbLaneOf(t)===laneId);
 }
+/* 某一分格里「昨日未完成」的：日期早于今天、既没点完成也没进已完成区。
+   看板主列表只显示今天（每日滚动），这些往期遗留就靠分格底部这块兜住，
+   点一下即挪到今天。 */
+function kbLaneOverdue(colId,laneId){
+  const today=todayStr();
+  return kbLaneTasks(colId,laneId)
+    .filter(t=>t.date&&t.date<today&&t.status!=='done'&&!t.finished)
+    .sort((a,b)=>a.date<b.date?1:-1);
+}
+/* 分格底部的「昨日未完成」区块；没有就不渲染 */
+function kbOverdueHtml(colId,laneId){
+  const over=kbLaneOverdue(colId,laneId);
+  if(!over.length)return'';
+  const rows=over.slice(0,5).map(t=>`<div class="kb-overdue-row" data-move="${t.id}" title="点击移到今天">
+      <span class="rd"></span><span class="tt">${esc(t.title)}</span><span class="dd">${t.date.slice(5).replace('-','/')}</span>
+    </div>`).join('');
+  return `<div class="kb-overdue">
+    <div class="kb-overdue-h"><span class="kb-overdue-t">昨日未完成</span><span class="kb-overdue-n">${over.length}</span>
+      <button class="kb-overdue-all" data-move-all="${laneId}" title="把这一格所有昨日未完成的任务一次性挪到今天">全部移到今天</button></div>
+    ${rows}${over.length>5?`<div class="kb-overdue-more">还有 ${over.length-5} 条</div>`:''}
+  </div>`;
+}
+/* 分格底部「全部移到今天」 */
+function kbMoveLaneOverdueAll(colId,laneId){
+  const over=kbLaneOverdue(colId,laneId);
+  if(!over.length){toast('这一格没有昨日未完成的任务');return;}
+  over.forEach(t=>{
+    const hh=dueTimeText(t),today=todayStr();
+    t.date=today;t.dueDate=today.slice(5);
+    if(t.due&&hh)t.due=today+'T'+hh;
+    t.reminded=false;
+  });
+  save();renderKanban();renderHome();renderCalendar();renderDayTasks();
+  toast('已把 '+over.length+' 条挪到今天');
+}
 const KB_MEMBERS=['曾生','老婆'];
 const KB_MEMBER_COLORS={'曾生':'#141414','老婆':'#e06ba4'};
 const KB_TEXT_COLORS=['#141414','#6b7280','#dc2626','#d97706','#2563eb','#7c3aed','#059669','#e06ba4'];
@@ -1711,6 +1765,7 @@ function renderKanban(){
             <button class="kb-save${(DB.kbDaily&&DB.kbDaily[l.id])?' on':''}" title="把这一格的任务设为每日固定任务：以后每天自动把日期滚到当天、完成状态清零">保存任务</button></div>
           <div class="kb-card-list"></div>
           <button class="kb-add">＋ 新建任务</button>
+          ${kbOverdueHtml(col.id,l.id)}
         </div>`).join('')
       : `<div class="kb-lane" data-column="${col.id}">
           <div class="kb-card-list"></div>
@@ -1732,6 +1787,10 @@ function renderKanban(){
       laneEl.querySelector('.kb-add').addEventListener('click',()=>kbCreate(col.id,laneEl.dataset.assignee||null));
       const svEl=laneEl.querySelector('.kb-save');
       if(svEl)svEl.addEventListener('click',()=>kbSaveLane(laneEl.dataset.lane));
+      const oaEl=laneEl.querySelector('.kb-overdue-all');
+      if(oaEl)oaEl.addEventListener('click',()=>kbMoveLaneOverdueAll(col.id,laneId));
+      laneEl.querySelectorAll('.kb-overdue-row').forEach(rowEl=>
+        rowEl.addEventListener('click',()=>kbMoveToToday(rowEl.dataset.move)));
     });
     board.appendChild(colEl);
   });
