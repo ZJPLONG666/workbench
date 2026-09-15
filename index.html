@@ -384,9 +384,25 @@ html[data-theme="dark"] .dock-wb{border-color:rgba(255,255,255,.14)}
 .wb-msg{max-width:85%;line-height:1.55;font-size:14px;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
 
 /* ===================== 看板 ===================== */
-.kb-board{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
-@media(max-width:1100px){.kb-board{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:680px){.kb-board{grid-template-columns:1fr}}
+/* 版面：工作区独占第一行（整宽），生活区/思潼区/多米区在第二行三等分 */
+.kb-board{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.kb-column[data-column="work"]{grid-column:1/-1}
+@media(max-width:1100px){.kb-board{grid-template-columns:repeat(2,1fr)}.kb-column[data-column="done"]{grid-column:1/-1}}
+@media(max-width:680px){.kb-board{grid-template-columns:1fr}.kb-column[data-column="done"]{grid-column:auto}}
+/* 区内分区（泳道）：工作区横向两段，其余单段 */
+.kb-lanes{flex:1;display:flex;flex-direction:column;gap:11px;min-height:0}
+.kb-column[data-column="work"] .kb-lanes{flex-direction:row;padding:0 11px 11px}
+@media(max-width:820px){.kb-column[data-column="work"] .kb-lanes{flex-direction:column}}
+.kb-lane{flex:1;display:flex;flex-direction:column;border-radius:var(--r-lg);min-height:150px;transition:box-shadow .2s}
+.kb-column[data-column="work"] .kb-lane{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8)}
+.kb-lane.drag-over{box-shadow:inset 0 0 0 3px var(--badge-bg)}
+.kb-lane-head{display:flex;align-items:center;gap:8px;padding:10px 11px 8px}
+.kb-nameplate{display:inline-flex;align-items:center;padding:5px 15px;border-radius:var(--r-pill);color:#fff!important;font-weight:800;font-size:13px;letter-spacing:.6px;box-shadow:var(--shadow-sm)}
+.kb-nameplate.peng{background:linear-gradient(135deg,#7C90A8,#586B81)}
+.kb-nameplate.ying{background:linear-gradient(135deg,#AB7A7E,#8A5A60)}
+.kb-column[data-column="work"] .kb-card-list{padding:0 10px 10px}
+.kb-column[data-column="work"] .kb-add{margin:0 10px 10px}
+html[data-theme="dark"] .kb-column[data-column="work"] .kb-lane{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
 .kb-column{border-radius:var(--r-xl);display:flex;flex-direction:column;min-height:360px;transition:box-shadow .2s;border:1px solid var(--card-border)}
 .kb-column[data-column="work"]{background:linear-gradient(160deg,var(--green-soft),rgba(255,255,255,.05))}
 .kb-column[data-column="life"]{background:linear-gradient(160deg,var(--blue-soft),rgba(255,255,255,.05))}
@@ -1618,6 +1634,17 @@ const KB_COLS=[
   {id:'sitong',name:'思潼区',dot:'#d96ba0'},
   {id:'done',name:'多米区',dot:'#9b7bd9'},
 ];
+/* 工作区内部的两个分区：按负责人自动落位（曾生→啊鹏 / 老婆→啊盈） */
+const KB_LANES={
+  work:[{id:'peng',name:'啊鹏',assignee:'曾生',cls:'peng'},
+        {id:'ying',name:'啊盈',assignee:'老婆',cls:'ying'}],
+};
+function kbLaneOf(t){return t.assignee==='老婆'?'ying':'peng';}
+function kbLaneTasks(colId,laneId){
+  const list=kbTasks(colId);
+  if(!laneId||!KB_LANES[colId])return list;
+  return list.filter(t=>kbLaneOf(t)===laneId);
+}
 const KB_MEMBERS=['曾生','老婆'];
 const KB_MEMBER_COLORS={'曾生':'#141414','老婆':'#e06ba4'};
 const KB_TEXT_COLORS=['#141414','#6b7280','#dc2626','#d97706','#2563eb','#7c3aed','#059669','#e06ba4'];
@@ -1649,16 +1676,32 @@ function renderKanban(){
     const vis=list.filter(kbVisible);
     const colEl=document.createElement('div');
     colEl.className='kb-column';colEl.dataset.column=col.id;
+    const lanes=KB_LANES[col.id];
+    const lanesHtml=lanes
+      ? lanes.map(l=>`<div class="kb-lane" data-column="${col.id}" data-lane="${l.id}" data-assignee="${l.assignee}">
+          <div class="kb-lane-head"><span class="kb-nameplate ${l.cls}">${l.name}</span><span class="kb-count">${vis.filter(t=>kbLaneOf(t)===l.id).length}</span></div>
+          <div class="kb-card-list"></div>
+          <button class="kb-add">＋ 新建任务</button>
+        </div>`).join('')
+      : `<div class="kb-lane" data-column="${col.id}">
+          <div class="kb-card-list"></div>
+          <button class="kb-add">＋ 新建任务</button>
+        </div>`;
     colEl.innerHTML=`
       <div class="kb-column-header"><span class="kb-dot" style="background:${col.dot}"></span><b class="font-black text-sm">${col.name}</b><span class="kb-count">${vis.length}</span></div>
-      <div class="kb-card-list"></div>
-      <button class="kb-add">＋ 新建任务</button>`;
-    const listEl=colEl.querySelector('.kb-card-list');
-    list.forEach(t=>{const c=kbCard(t);if(!kbVisible(t))c.style.display='none';listEl.appendChild(c);});
-    colEl.addEventListener('dragover',kbDragOver);
-    colEl.addEventListener('dragleave',kbDragLeave);
-    colEl.addEventListener('drop',kbDrop);
-    colEl.querySelector('.kb-add').addEventListener('click',()=>kbCreate(col.id));
+      <div class="kb-lanes">${lanesHtml}</div>`;
+    colEl.querySelectorAll('.kb-lane').forEach(laneEl=>{
+      const laneId=laneEl.dataset.lane;
+      const listEl=laneEl.querySelector('.kb-card-list');
+      list.forEach(t=>{
+        if(laneId&&kbLaneOf(t)!==laneId)return;
+        const c=kbCard(t);if(!kbVisible(t))c.style.display='none';listEl.appendChild(c);
+      });
+      laneEl.addEventListener('dragover',kbDragOver);
+      laneEl.addEventListener('dragleave',kbDragLeave);
+      laneEl.addEventListener('drop',kbDrop);
+      laneEl.querySelector('.kb-add').addEventListener('click',()=>kbCreate(col.id,laneEl.dataset.assignee||null));
+    });
     board.appendChild(colEl);
   });
   kbUpdateClear();kbUpdateSelBar();
@@ -1729,12 +1772,13 @@ function kbCard(t){
   });
   return el;
 }
-/* ---- 拖拽排序 ---- */
+/* ---- 拖拽排序（「段」即投放区；拖到另一段 = 换负责人） ---- */
+function kbLaneList(laneEl){return laneEl.querySelector('.kb-card-list');}
 function kbDragOver(e){
   e.preventDefault();e.dataTransfer.dropEffect='move';
-  const col=e.currentTarget;col.classList.add('drag-over');
+  const lane=e.currentTarget;lane.classList.add('drag-over');
   kbClearIndicators();
-  const listEl=col.querySelector('.kb-card-list');
+  const listEl=kbLaneList(lane);
   const cards=[...listEl.querySelectorAll('.kb-card:not(.dragging)')];
   const ind=document.createElement('div');ind.className='kb-drop-ind';
   const after=cards.find(c=>e.clientY<c.getBoundingClientRect().top+c.offsetHeight/2);
@@ -1744,15 +1788,14 @@ function kbDragLeave(e){e.currentTarget.classList.remove('drag-over');}
 function kbClearIndicators(){document.querySelectorAll('.kb-drop-ind').forEach(x=>x.remove());}
 function kbDrop(e){
   e.preventDefault();
-  const col=e.currentTarget;col.classList.remove('drag-over');
+  const lane=e.currentTarget;lane.classList.remove('drag-over');
   if(!kbDragId)return;
   const t=DB.tasks.find(x=>x.id===kbDragId);if(!t)return;
-  const ind=col.querySelector('.kb-drop-ind');
-  const listEl=col.querySelector('.kb-card-list');
+  const ind=lane.querySelector('.kb-drop-ind');
+  const listEl=kbLaneList(lane);
   const cards=[...listEl.querySelectorAll('.kb-card:not(.dragging)')];
   let newOrder;
   if(ind){
-    const idx=cards.findIndex(c=>c.nextElementSibling===ind||c===ind.previousElementSibling&&false);
     const beforeCards=cards.filter(c=>c.compareDocumentPosition(ind)&Node.DOCUMENT_POSITION_FOLLOWING);
     const afterCards=cards.filter(c=>c.compareDocumentPosition(ind)&Node.DOCUMENT_POSITION_PRECEDING);
     const prev=beforeCards[beforeCards.length-1],next=afterCards[0];
@@ -1760,20 +1803,25 @@ function kbDrop(e){
     const n=next?(DB.tasks.find(x=>x.id===next.dataset.id).order||0):null;
     newOrder=p===null?(n===null?0:n-1):n===null?p+1:(p+n)/2;
   }else{
-    const last=kbTasks(col.dataset.column).slice(-1)[0];
+    const sib=kbLaneTasks(lane.dataset.column,lane.dataset.lane);
+    const last=sib[sib.length-1];
     newOrder=last?(last.order||0)+1:0;
   }
-  t.column=col.dataset.column;
+  t.column=lane.dataset.column;
+  if(lane.dataset.assignee)t.assignee=lane.dataset.assignee;
   t.status=t.column==='done'?'done':'todo';
   t.order=newOrder;
   kbClearIndicators();save();renderKanban();renderCalendar();renderDayTasks();renderHome();
 }
 /* ---- 新建 ---- */
-function kbCreate(colId){
+function kbCreate(colId,assignee){
   const t=todayStr();
-  const last=kbTasks(colId).slice(-1)[0];
+  const who=assignee||'曾生';
+  const laneId=KB_LANES[colId]?(who==='老婆'?'ying':'peng'):undefined;
+  const sib=kbLaneTasks(colId,laneId);
+  const last=sib[sib.length-1];
   const task={id:uid(),title:'新任务',note:'',status:colId==='done'?'done':'todo',column:colId,
-    date:t,dueDate:t.slice(5),assignee:'曾生',priority:'P2',order:last?(last.order||0)+1:0,style:null};
+    date:t,dueDate:t.slice(5),assignee:who,priority:'P2',order:last?(last.order||0)+1:0,style:null};
   DB.tasks.push(task);save();
   kbEditId=task.id;renderKanban();
   const nt=document.querySelector(`.kb-card[data-id="${task.id}"] .kb-title`);
