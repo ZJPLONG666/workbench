@@ -593,6 +593,8 @@ html[data-theme="dark"] .idea-body a{color:#8CB4FF}
 .idea-body[data-paper="line"]>*:first-child{margin-top:0}
 .idea-body img{max-width:100%;height:auto;border-radius:10px;display:block;margin:9px 0;cursor:pointer;box-shadow:var(--shadow-sm);background:#fff}
 .idea-body img.sel{outline:3px solid var(--badge-bg);outline-offset:2px}
+/* 图片在本机仓库、但当前设备没有（换设备打开）→ 占位框，而不是塌成空白 */
+.idea-body img[data-missing]{height:104px;background:repeating-linear-gradient(45deg,var(--field-bg) 0 9px,var(--card-bg) 9px 18px);border:1.5px dashed var(--card-border);box-shadow:none;opacity:.92}
 /* 画布里的 `<font size=7>`（execCommand 字号产物）统一换成 px 的内联字号 */
 .idea-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px 10px;font-size:10.5px;font-weight:700;color:var(--ink-2)}
 .idea-foot #ideaHint{margin-left:auto}
@@ -3534,9 +3536,243 @@ const IDEA_KEY=DB_KEY+'_ideas';
 const IDEA_ROOM_SUFFIX='__ideas';
 const IDEA_MAXW=1600;          // 插图前先等比缩到这个最大边（px）
 const IDEA_Q=0.72;             // webp 压缩质量
-const IDEA_MB=5;               // localStorage 大约 5MB
+const IDEA_MB=5;               // localStorage 大约 5MB（只装文字；图片走下面的仓库）
 const IDEA_PAPERS=['plain','line','dot','grid'];
 const IDEA_PAPER_NAME={plain:'纯白',line:'横线',dot:'点状格',grid:'方形格'};
+/* ==================================================================
+   图片仓库（IndexedDB）
+   --------------------------------------------------------------
+   为什么要它：localStorage 每个源只有约 5MB，而且是**整个工作台共用**
+   （任务/客户笔记/销售记录全挤在里面）。插图原本是把图片转成 base64 文本内嵌，
+   体积还要再涨 33% —— 实测一条笔记 4 张图就吃掉 2.16MB（占配额 43%），
+   再写两条就撞顶，撞顶时**所有应用的本机保存一起失败**。
+   所以图片改存 IndexedDB：配额不再是 5MB，而是磁盘的一个比例（Chrome 通常几 GB 起），
+   笔记里只留一个几十字节的 data-iid 引用。
+   取舍：图片只在本机，另一台设备打开同一条笔记看到的是占位框（文字照常同步）。
+================================================================== */
+const IDB_NAME='zengsheng_workbench_img';
+const IDB_STORE='imgs';
+const IMG_REF_ATTR='data-iid';
+let idbP=null,idbBad=false,ideaMigrating=false;
+const ideaObjs={};                            // ref -> objectURL（同一张图只解码一次）
+let ideaSizeCacheAt=0,ideaSizeCacheV=0;
+
+function idbUsable(){
+  if(idbBad||!window.indexedDB)return false;
+  if(location.protocol==='file:')return false;   // file:// 的 origin 是 null，IndexedDB 不可用
+  return true;
+}
+function idbOpen(){
+  if(idbP)return idbP;
+  idbP=new Promise(function(res,rej){
+    var req;
+    try{req=indexedDB.open(IDB_NAME,1);}catch(e){idbBad=true;rej(e);return;}
+    req.onupgradeneeded=function(){
+      var db=req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE,{keyPath:'id'});
+    };
+    req.onsuccess=function(){res(req.result);};
+    req.onerror=function(){idbBad=true;rej(req.error||new Error('idb open'));};
+  });
+  return idbP;
+}
+function idbGet(id){
+  if(!idbUsable())return Promise.resolve(null);
+  return idbOpen().then(function(db){return new Promise(function(res,rej){
+    var tx;try{tx=db.transaction(IDB_STORE,'readonly');}catch(e){rej(e);return;}
+    var rq=tx.objectStore(IDB_STORE).get(id);
+    rq.onsuccess=function(){res(rq.result||null);};
+    rq.onerror=function(){rej(rq.error);};
+  });});
+}
+function idbPut(rec){
+  return idbOpen().then(function(db){return new Promise(function(res,rej){
+    var tx;try{tx=db.transaction(IDB_STORE,'readwrite');}catch(e){rej(e);return;}
+    tx.objectStore(IDB_STORE).put(rec);
+    tx.oncomplete=function(){res(true);};
+    tx.onerror=function(){rej(tx.error);};
+    tx.onabort=function(){rej(tx.error);};
+  });});
+}
+function idbDel(id){
+  if(!idbUsable())return Promise.resolve(false);
+  return idbOpen().then(function(db){return new Promise(function(res,rej){
+    var tx;try{tx=db.transaction(IDB_STORE,'readwrite');}catch(e){rej(e);return;}
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete=function(){res(true);};
+    tx.onerror=function(){rej(tx.error);};
+    tx.onabort=function(){rej(tx.error);};
+  });});
+}
+function idbSize(){
+  if(!idbUsable())return Promise.resolve(0);
+  if(Date.now()-ideaSizeCacheAt<3000)return Promise.resolve(ideaSizeCacheV);
+  return idbOpen().then(function(db){return new Promise(function(res){
+    var tx;try{tx=db.transaction(IDB_STORE,'readonly');}catch(e){res(0);return;}
+    var rq=tx.objectStore(IDB_STORE).getAll();
+    rq.onsuccess=function(){
+      var n=0;(rq.result||[]).forEach(function(x){n+=((x&&x.blob&&x.blob.size)||0);});
+      ideaSizeCacheAt=Date.now();ideaSizeCacheV=n;
+      res(n);
+    };
+    rq.onerror=function(){res(0);};
+  });});
+}
+/* 图片身份用「内容指纹」而不是随机数：两台设备各自迁移同一张图会算出同一个 ref，
+   于是 A 设备推送出去的引用在 B 设备也能对上号，两边都看得到图。 */
+function ideaRefFor(blob){
+  var finish=function(u8){
+    var a=0x811c9dc5,b=0x7f4a7c15;
+    for(var i=0;i<u8.length;i++){
+      a=Math.imul(a^u8[i],0x01000193)>>>0;
+      b=Math.imul(b+u8[i],0x85ebca6b)>>>0;
+    }
+    return 'i'+u8.length.toString(36)+'-'+a.toString(36)+'-'+b.toString(36);
+  };
+  if(blob.arrayBuffer)return blob.arrayBuffer().then(function(buf){return finish(new Uint8Array(buf));});
+  return new Promise(function(res,rej){          // 兜底：老浏览器没有 Blob.arrayBuffer
+    var fr=new FileReader();
+    fr.onload=function(){res(finish(new Uint8Array(fr.result)));};
+    fr.onerror=function(){rej(new Error('read'));};
+    fr.readAsArrayBuffer(blob);
+  });
+}
+function ideaImgUrl(ref,blob){
+  if(ideaObjs[ref])return ideaObjs[ref];
+  var u=URL.createObjectURL(blob);
+  ideaObjs[ref]=u;
+  return u;
+}
+function ideaDropRef(ref){                     // 图删了，objectURL 也要回收，不然内存泄漏
+  if(!ref)return;
+  if(ideaObjs[ref]){try{URL.revokeObjectURL(ideaObjs[ref]);}catch(e){}delete ideaObjs[ref];}
+  if(idbUsable())idbDel(ref).catch(function(){});
+}
+function ideaRefsIn(html){
+  var out=[],re=/\sdata-iid\s*=\s*"([^"]+)"/gi,m;
+  while((m=re.exec(String(html||''))))out.push(m[1]);
+  return out;
+}
+function blobToDataUrl(b){
+  return new Promise(function(res){
+    var fr=new FileReader();
+    fr.onload=function(){res(fr.result||'');};
+    fr.onerror=function(){res('');};
+    fr.readAsDataURL(b);
+  });
+}
+function dataUrlToBlob(u){
+  return new Promise(function(res,rej){
+    try{
+      var i=u.indexOf(',');if(i<0)throw new Error('bad dataurl');
+      var mime=(u.slice(0,i).match(/data:([^;]+)/)||[])[1]||'image/webp';
+      var bin=atob(u.slice(i+1)),arr=new Uint8Array(bin.length);
+      for(var k=0;k<bin.length;k++)arr[k]=bin.charCodeAt(k);
+      res(new Blob([arr],{type:mime}));
+    }catch(e){rej(e);}
+  });
+}
+/* 存图：能进仓库返回 {ref}；仓库不可用则退回内嵌 base64，返回 {src} */
+function ideaPutImg(c){
+  var fallback=function(){return blobToDataUrl(c.blob).then(function(u){
+    if(!u)throw new Error('encode');return {src:u,w:c.w};
+  });};
+  if(!idbUsable())return fallback();
+  var blob=c.blob;
+  return ideaRefFor(blob).then(function(ref){
+    return idbPut({id:ref,blob:blob,w:c.w,h:c.h,mime:blob.type||'',at:Date.now()})
+      .then(function(){ideaImgUrl(ref,blob);return {ref:ref,w:c.w};});
+  }).catch(fallback);
+}
+/* 落库前抹掉 src：有 data-iid 的图在仓库里，留着 src 会把 objectURL（或旧 base64）
+   写进 localStorage 和云端，等于白搬。没有 data-iid 的老数据原样保留，免得丢图。 */
+function ideaStripImgs(html){
+  return String(html==null?'':html).replace(/<img\b[^>]*>/gi,function(tag){
+    if(!/\sdata-iid\s*=/i.test(tag))return tag;
+    return tag.replace(/\s+src\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i,'')
+              .replace(/\s+data-missing\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i,'');
+  });
+}
+/* 渲染后把 data-iid 还原成真实图片；本机没这张图就标成占位框 */
+function ideaHydrate(){
+  var b=document.getElementById('ideaBody');if(!b)return;
+  var imgs=[].slice.call(b.querySelectorAll('img['+IMG_REF_ATTR+']'));
+  if(!imgs.length)return;
+  imgs.forEach(function(img){
+    var ref=img.getAttribute(IMG_REF_ATTR);if(!ref)return;
+    if(ideaObjs[ref]){img.setAttribute('src',ideaObjs[ref]);img.removeAttribute('data-missing');return;}
+    idbGet(ref).then(function(rec){
+      var cur=b.querySelector('img['+IMG_REF_ATTR+'="'+ref+'"]');
+      if(!cur)return;
+      if(!rec||!rec.blob){cur.setAttribute('data-missing','1');return;}
+      cur.setAttribute('src',ideaImgUrl(ref,rec.blob));
+      cur.removeAttribute('data-missing');
+      requestAnimationFrame(ideaFloatSync);
+    }).catch(function(){
+      var cur=b.querySelector('img['+IMG_REF_ATTR+'="'+ref+'"]');
+      if(cur)cur.setAttribute('data-missing','1');
+    });
+  });
+}
+/* 迁移前，把「还带 base64 的原始数据」备份到独立房间一次。
+   图片搬进本机仓库后就不再随云同步了，万一本机浏览器数据被清（换机/清缓存），
+   这份快照是唯一的退路。只在首次迁移写一次，失败不阻塞迁移。 */
+function ideaBackupRaw(){
+  try{
+    var room=ideaRoom();if(!room)return;
+    var st=ideaStore();
+    if(st.meta&&st.meta.imgBackup)return;
+    var raw={ideas:st.ideas,deleted:st.deleted,meta:{updatedAt:Date.now()}};
+    if(JSON.stringify(raw).indexOf('data:image')<0)return;   // 没有内嵌图就没什么可备的
+    fetch(SB_URL+'/rest/v1/'+SB_TABLE+'?on_conflict=room',{
+      method:'POST',
+      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body:JSON.stringify([{room:room+'_bak',data:raw,updated_at:new Date().toISOString()}])
+    }).then(function(){st.meta.imgBackup=1;ideaWriteLocal();}).catch(function(){});
+  }catch(e){}
+}
+
+/* 本机已存在的内嵌 base64 图 → 搬进仓库（整个仓库生命周期只跑一次） */
+function ideaMigrateImgs(){
+  if(!idbUsable()||ideaMigrating)return Promise.resolve({moved:0,freed:0});
+  var st=ideaStore();
+  if(st.meta&&st.meta.imgMoved)return Promise.resolve({moved:0,freed:0});
+  var boxes=st.ideas.filter(function(n){return n&&n.html&&n.html.indexOf('data:image/')>=0;});
+  if(!boxes.length){st.meta.imgMoved=1;ideaWriteLocal();return Promise.resolve({moved:0,freed:0});}
+  ideaMigrating=true;
+  ideaBackupRaw();          // 先留退路，再动数据（异步，不阻塞）
+  var moved=0,freed=0,chain=Promise.resolve();
+  boxes.forEach(function(n){
+    chain=chain.then(function(){
+      var d=document.createElement('div');
+      d.innerHTML=ideaSanitize(n.html||'');
+      var jobs=[].slice.call(d.querySelectorAll('img[src^="data:image/"]')).map(function(img){
+        var src=img.getAttribute('src')||'';
+        return dataUrlToBlob(src).then(function(blob){
+          return ideaRefFor(blob).then(function(ref){
+            return idbPut({id:ref,blob:blob,w:0,h:0,mime:blob.type||'',at:Date.now()}).then(function(){
+              img.removeAttribute('src');
+              img.setAttribute(IMG_REF_ATTR,ref);
+              img.removeAttribute('data-missing');
+              moved++;freed+=src.length;      // src 是 base64，长度≈释放掉的本机字符数
+            });
+          });
+        }).catch(function(){});               // 单张失败就原样留着，不阻断整轮
+      });
+      return Promise.all(jobs).then(function(){
+        var html=d.innerHTML;
+        if(html!==n.html){n.html=html;n.updatedAt=Date.now();}
+      });
+    });
+  });
+  return chain.then(function(){
+    st.meta.imgMoved=1;
+    ideaWriteLocal();ideaSchedulePush();ideaMeter();
+    ideaMigrating=false;
+    return {moved:moved,freed:freed};
+  }).catch(function(){ideaMigrating=false;return {moved:moved,freed:freed};});
+}
+
 let IDEAS=null;
 let ideaCurId=null,ideaQuery='',ideaPulledAt=0,ideaUpserting=false,ideaPushTimer=null,ideaPullBusy=false;
 let ideaRange=null,ideaImgEl=null,ideaLinkEl=null,ideaEditTimer=null,ideaDelArm=null,ideaSyncState='',ideaSyncAt=0;
@@ -3580,9 +3816,22 @@ function ideaTimeText(ts){
 function ideaMeter(){
   const el=document.getElementById('ideaMeter');if(!el)return;
   let bytes=0;try{bytes=(localStorage.getItem(IDEA_KEY)||'').length;}catch(e){}
+  const fmt=n=>n<1048576?(Math.round(n/1024)+' KB'):((n/1048576).toFixed(2)+' MB');
   const mb=bytes/1048576;
-  el.innerHTML='本机已用 <b>'+(bytes<1048576?(Math.round(bytes/1024)+' KB'):(mb.toFixed(2)+' MB'))+'</b> / 约 '+IDEA_MB+' MB';
-  el.classList.toggle('warn',mb/IDEA_MB>=0.7);
+  if(!idbUsable()){
+    /* 仓库不可用（file:// 或隐私模式）→ 图片只能内嵌，仍是老的 ~5MB 口径 */
+    el.innerHTML='本机已用 <b>'+fmt(bytes)+'</b> / 约 '+IDEA_MB+' MB';
+    el.title='当前环境用不了图片仓库（用 file:// 直接打开页面时会出现），图片只能内嵌，受 ~5MB 限制';
+    el.classList.toggle('warn',mb/IDEA_MB>=0.7);
+    return;
+  }
+  el.innerHTML='本机 文字 <b>'+fmt(bytes)+'</b> · 图片 <b id="ideaMeterImg">…</b>';
+  el.title='文字存本机存储（上限约 5MB），图片存本机图片仓库（配额大得多，且不占前者的额度）';
+  el.classList.toggle('warn',mb/IDEA_MB>=0.9);
+  idbSize().then(function(n){
+    const box=document.getElementById('ideaMeterImg');
+    if(box)box.textContent=fmt(n);
+  }).catch(function(){});
 }
 function ideaUpdateStat(){
   const el=document.getElementById('ideaStat');if(!el)return;
@@ -3657,6 +3906,7 @@ function ideaDeleteNote(id){
   const i=arr.findIndex(x=>x.id===id);if(i<0)return;
   const gone=arr[i];
   arr.splice(i,1);
+  ideaRefsIn(gone.html).forEach(ideaDropRef);   // 笔记没了，它引用的图片一并从仓库清掉（不留孤儿）
   const key='ideas:'+id;
   IDEAS.deleted=IDEAS.deleted||[];
   if(IDEAS.deleted.indexOf(key)<0)IDEAS.deleted.push(key);   // 墓碑：删除要能跨端生效
@@ -3675,7 +3925,7 @@ function ideaSaveCur(){
   const tEl=document.getElementById('ideaTitle'),bEl=document.getElementById('ideaBody');
   if(!tEl||!bEl)return;
   const title=tEl.value.trim();
-  const html=ideaSanitize(bEl.innerHTML);
+  const html=ideaSanitize(ideaStripImgs(bEl.innerHTML));   // 图片只留 data-iid 引用：绝不把 base64/objectURL 写进本机与云端
   if(n.title===title&&n.html===html)return;    // 没变就不写，省掉一次整库序列化
   n.title=title;n.html=html;n.updatedAt=Date.now();
   ideaWriteLocal();ideaSchedulePush();ideaRenderList();ideaMeter();ideaUpdateStat();
@@ -3695,6 +3945,7 @@ function ideaShow(id){
   t.disabled=false;t.value=n.title||'';
   b.innerHTML=ideaSanitize(n.html||'');
   b.setAttribute('contenteditable','true');
+  ideaHydrate();                          // data-iid → 真实图片（本机没这张图就显示占位框）
   if(bar)bar.classList.remove('off');
   ideaApplyPaper(n.paper||'plain');
   ideaUpdateStat();
@@ -3900,8 +4151,11 @@ function ideaFiles(files){
   toast('正在压缩 '+total+' 张图片…');
   arr.forEach(f=>{
     if(f.size>12*1024*1024){fail++;done++;return;}
-    ideaCompress(f).then(res=>{
-      ideaInsertHtml('<img src="'+res.src+'" alt="" style="width:'+(res.w>620?'620px':'100%')+'">');
+    ideaCompress(f).then(res=>ideaPutImg(res)).then(r=>{
+      /* 有 ref = 进了本机图片仓库，笔记里只记引用；src 只在仓库不可用时才是内嵌 base64 */
+      const attr=r.ref?('data-iid="'+r.ref+'"'):'';
+      const src=r.ref?(ideaObjs[r.ref]||''):(r.src||'');
+      ideaInsertHtml('<img '+attr+' src="'+src+'" alt="" style="width:'+(r.w>620?'620px':'100%')+'">');
     }).catch(()=>{fail++;}).then(()=>{
       done++;
       if(done===total){
@@ -3925,9 +4179,18 @@ function ideaCompress(file){
           const ctx=c.getContext('2d');
           ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,w,h);          // 透明 PNG 统一铺白，深色模式下不会发灰
           ctx.drawImage(im,0,0,w,h);
-          let out=c.toDataURL('image/webp',IDEA_Q);
-          if(out.indexOf('data:image/webp')<0)out=c.toDataURL('image/jpeg',IDEA_Q);
-          res({src:out,w:w,h:h});
+          /* 交给仓库的是 Blob，不再生成 base64（base64 比二进制还大 33%，正是撑爆 5MB 的元凶） */
+          const done=b=>b?res({blob:b,w:w,h:h}):rej(new Error('encode'));
+          if(!c.toBlob){                                   // 极老浏览器：退回 dataURL 再转 Blob
+            let out=c.toDataURL('image/webp',IDEA_Q);
+            if(out.indexOf('data:image/webp')<0)out=c.toDataURL('image/jpeg',IDEA_Q);
+            dataUrlToBlob(out).then(done,rej);
+            return;
+          }
+          c.toBlob(b=>{
+            if(b&&(b.type==='image/webp'||b.type==='image/jpeg'))done(b);
+            else c.toBlob(done,'image/jpeg',IDEA_Q);       // 不支持 webp 就退 jpeg
+          },'image/webp',IDEA_Q);
         }catch(e){rej(e);}
       };
       im.onerror=()=>rej(new Error('decode'));
@@ -4042,7 +4305,10 @@ function ideaBindFloatSync(){
 }
 function ideaImgDel(){
   if(!ideaImgEl)return;
-  const el=ideaImgEl;ideaHideImgBar();el.remove();ideaSaveCur();ideaUpdateStat();toast('图片已删除');
+  const el=ideaImgEl,ref=el.getAttribute(IMG_REF_ATTR);
+  ideaHideImgBar();el.remove();
+  ideaDropRef(ref);                       // 图删了，仓库里那份也别留着占地方
+  ideaSaveCur();ideaUpdateStat();toast('图片已删除');
 }
 function ideaOnDrop(e){
   const dt=e.dataTransfer;if(!dt)return;
@@ -4211,7 +4477,16 @@ function renderIdeas(){
   ideaBindList();ideaBindEditor();ideaBindBar();ideaBindImgBar();ideaBindFile();ideaBindLinkBar();ideaBindHandleAndFloat();
   if(!ideaCurId||!IDEAS.ideas.some(n=>n.id===ideaCurId))ideaCurId=(ideaSorted()[0]||{}).id||null;
   ideaRenderList();ideaShow(ideaCurId);ideaMeter();ideaSyncLine();
-  if(ideaRoom()&&Date.now()-ideaPulledAt>60000)ideaPull(false);   // 打开时顺手拉一次，60s 内不重复拉
+  /* 迁移必须排在拉云端之前：迁移会刷新 updatedAt，合并时本机这份才赢；
+     反过来先拉的话，云端那份「内嵌 base64」的旧数据会盖掉本机、图片就没了。 */
+  ideaMigrateImgs().then(function(res){
+    if(res&&res.moved){
+      ideaMeter();ideaUpdateStat();
+      if(ideaCurId)ideaShow(ideaCurId);    // 当前笔记的图已换成引用，重渲染一次从仓库取图
+      toast('已把 '+res.moved+' 张图片搬进本机图片仓库，本机存储释放约 '+(res.freed/1048576).toFixed(1)+' MB 📦');
+    }
+    if(ideaRoom()&&Date.now()-ideaPulledAt>60000)ideaPull(false);   // 打开时顺手拉一次，60s 内不重复拉
+  });
 }
 
 /* ================================================================
