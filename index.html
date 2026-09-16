@@ -1563,7 +1563,7 @@ const SB_ROOM_DEFAULT='13535754219zjp';
 /* 同步/界面状态变量：必须在使用它的函数之前声明，否则触发 TDZ ReferenceError */
 let syncRoom=localStorage.getItem(DB_KEY+'_room');
 if(syncRoom===null) syncRoom=SB_ROOM_DEFAULT; // 未主动断开过 → 用内置口令（换设备零配置）
-let syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0;
+let syncTimer=null,syncPushTimer=null,syncBusy=false,syncLastAt=0,syncSig='',syncFailN=0;
 let _refreshing=false;
 let visListenerBound=false;
 let rtQueue=[];
@@ -3081,22 +3081,44 @@ function sbHeaders(extra){
   if(extra){for(const k in extra)h[k]=extra[k];}
   return h;
 }
+/* 推送队列：撞上「正在推送」不能把这次改动丢掉。
+   2026-09-16 修：原先开头 `if(!syncRoom||syncBusy)return;` 会把撞上忙的那次推送
+   静默丢弃 —— 连着点几个任务时只有头一次推得出去，云端永远停在旧状态，别的设备
+   （或刷新后）一拉就退回未完成，表现为「按了已完成又反复变回未完成」。
+   现在改成「比内容」：这一轮结束后若本机内容仍与「上次成功推送的内容」不一致，
+   就按退避补推，直到真的推上去为止。 */
 async function sbPush(merge=true){
-  if(!syncRoom||syncBusy)return;
+  if(!syncRoom)return;
+  if(syncBusy)return;                      // 忙：直接退出，由下面 finally 里的内容比对兜底补推
   syncBusy=true;
   try{
     // 推送前先合并云端，避免覆盖另一端的最新改动（解决双向不同步 / 互覆写丢数据）
     if(merge){ try{ await sbPull(false); }catch(e){} }
-    const body=JSON.stringify([{room:syncRoom,data:DB,updated_at:new Date().toISOString()}]);
+    const snap=JSON.stringify(DB);         // 记下这一轮推的是什么，供事后比对该不该补推
     const r=await fetch(`${SB_URL}/rest/v1/${SB_TABLE}?on_conflict=room`,{
       method:'POST',
-      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-      body:body
+      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return:minimal'}),
+      body:JSON.stringify([{room:syncRoom,data:DB,updated_at:new Date().toISOString()}])
     });
     if(!r.ok)throw new Error('HTTP '+r.status);
+    syncSig=snap; syncFailN=0;
     syncLastAt=Date.now();renderSyncStatus();
-  }catch(e){/* 离线时静默失败，下次保存自动重试 */}
-  syncBusy=false;
+  }catch(e){ syncFailN=Math.min((syncFailN||0)+1,5); }   // 失败不清账，下面按退避重试
+  finally{
+    syncBusy=false;
+    let cur=''; try{ cur=JSON.stringify(DB); }catch(e){}
+    if(cur!==syncSig){                     // 还有没推上去的内容 → 补推（失败越多等越久，上限 20s）
+      clearTimeout(syncPushTimer);
+      syncPushTimer=setTimeout(()=>{sbPush();},Math.min(1500*Math.pow(2,Math.max(0,(syncFailN||0)-1)),20000));
+    }
+  }
+}
+/* 切后台 / 关页面 / 切 App 之前把没推完的补一脚（手机上点完任务随手切走时最有用）。
+   用 merge=false：先把本机这次改动送出去，别再花时间拉整库。 */
+function syncFlush(){
+  if(!syncRoom)return;
+  let cur=''; try{ cur=JSON.stringify(DB); }catch(e){ return; }
+  if(cur!==syncSig){ clearTimeout(syncPushTimer); sbPush(false); }
 }
 // 双向安全合并：按主键 union，同一记录按各自 updatedAt 取较新一侧；不再整库覆盖（杜绝互覆写丢数据）
 function mergeDB(local, remote){
@@ -3167,7 +3189,7 @@ async function sbPull(manual){
   const before=JSON.stringify(DB);
   const merged=mergeDB(DB, remote);
   if(JSON.stringify(merged)!==before){
-    DB=merged; localStorage.setItem(DB_KEY,JSON.stringify(DB)); kbRollDaily(); refreshCurrentView(); syncSchedulePush();
+    DB=merged; try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}catch(e){console.error('[sync] 本机写入失败',e);} kbRollDaily(); refreshCurrentView(); syncSchedulePush();
     if(manual)toast('已同步最新数据');
   }else if(manual){toast('本地已是最新');}
   syncLastAt=Date.now();renderSyncStatus();
@@ -3548,7 +3570,11 @@ function startSyncLoop(){
   syncTimer=setInterval(()=>{if(!document.hidden&&syncRoom)sbPull().catch(()=>{});},8000);
   if(!visListenerBound){
     visListenerBound=true;
-    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && syncRoom) sbPull().catch(()=>{}); });
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden){ syncFlush(); return; }        // 切后台：先把没推完的推出去
+      if(syncRoom)sbPull().catch(()=>{});
+    });
+    window.addEventListener('pagehide',()=>{ syncFlush(); });   // 关页面 / 切 App 同理
     window.addEventListener('focus',()=>{ if(syncRoom) sbPull().catch(()=>{}); });
     window.addEventListener('online',()=>{ if(syncRoom){ sbPull().catch(()=>{}); sbPush(); } });
     window.addEventListener('pageshow',()=>{ if(syncRoom) sbPull().catch(()=>{}); }); // iOS 主屏 PWA 重新回到前台
