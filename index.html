@@ -463,8 +463,13 @@ html[data-theme="dark"]{--kb-title-c:#EDEDF0}
 .kb-subs{margin:6px 0 0;display:flex;flex-direction:column;gap:4px}
 .kb-sub{display:flex;align-items:center;gap:6px;padding:3px 5px 3px 8px;border-radius:8px;
   background:rgba(255,255,255,.46);border:1px solid rgba(0,0,0,.05)}
-.kb-sub-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35;word-break:break-word}
+.kb-sub-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35;word-break:break-word;
+  cursor:text}
 .kb-sub.done .kb-sub-t{text-decoration:line-through;opacity:.55}
+/* 行内改字：输入框顶掉文字，右侧「已完成 / ✕」原地不动 */
+.kb-sub.editing{background:rgba(255,255,255,.78);border-color:var(--badge-bg)}
+.kb-sub-edit{flex:1 1 auto;width:auto;min-width:0;padding:2px 6px}
+html[data-theme="dark"] .kb-sub.editing{background:rgba(255,255,255,.17)}
 .kb-sub-fin{flex-shrink:0;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:700;line-height:1.5;
   cursor:pointer;user-select:none;white-space:nowrap;border:1.5px solid var(--hairline);background:var(--surface);
   color:var(--ink-2);transition:all .15s}
@@ -1104,7 +1109,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <button class="chipx hidden" id="kbClear" style="background:#141414;color:#fff">清除筛选</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
-    <p class="text-xs mt-5 text-center font-bold" style="color:var(--ink-2)">拖 ⠿ 手柄排序 · 点标题直接编辑 · 点优先级/头像/日期快捷修改 · 日历任务自动同步</p>
+    <p class="text-xs mt-5 text-center font-bold" style="color:var(--ink-2)">拖 ⠿ 手柄排序 · 点标题/子任务文字直接编辑 · 右击卡片加子任务 · 点优先级/头像/日期快捷修改</p>
     <button class="fab-save" id="kanbanSave" title="保存看板">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#F5D54A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
     </button>
@@ -2008,6 +2013,8 @@ let kbDragId=null,kbEditId=null,kbSelected=new Set();
    kbSubSeq 每轮 renderKanban 自增，用来让上一轮输入框的 blur 回调失效 ——
    否则回车提交后元素被移除会再触发一次 blur，同一条子任务会被提交两遍。 */
 let kbSubEditId=null,kbSubSeq=0;
+/* 正在改文字的子任务 id；同一时刻「新增框」和「改字框」只开一个 */
+let kbSubTextId=null;
 let kbCalY,kbCalM,kbCalTaskId=null;
 
 function kbTasks(col){return DB.tasks.filter(t=>t.column===col).sort((a,b)=>(a.order||0)-(b.order||0));}
@@ -2052,14 +2059,17 @@ function renderKanban(){
     colEl.innerHTML=`
       <div class="kb-column-header"><span class="kb-dot" style="background:${col.dot}"></span><b class="font-black text-sm">${col.name}</b><span class="kb-count">${vis.length}</span></div>
       <div class="kb-lanes">${lanesHtml}</div>`;
+    board.appendChild(colEl);        // 必须先入树：游离节点里的输入框 focus() 会静默失效
     colEl.querySelectorAll('.kb-lane').forEach(laneEl=>{
       const laneId=laneEl.dataset.lane;
       const listEl=laneEl.querySelector('.kb-card-list');
       list.forEach(t=>{
         if(laneId&&kbLaneOf(t)!==laneId)return;
         const c=kbCard(t);if(!kbVisible(t))c.style.display='none';listEl.appendChild(c);
-        const si=c.querySelector('.kb-sub-input');   // 脱离文档的节点聚焦无效，必须入树后再聚焦
-        if(si)si.focus();
+        /* 脱离文档的节点聚焦无效，必须入树后再聚焦；改字框优先，且全选便于直接覆写 */
+        const ei=c.querySelector('.kb-sub-edit');
+        const si=ei||c.querySelector('.kb-sub-input');
+        if(si){si.focus();if(ei)si.select();}
       });
       laneEl.addEventListener('dragover',kbDragOver);
       laneEl.addEventListener('dragleave',kbDragLeave);
@@ -2072,7 +2082,6 @@ function renderKanban(){
       laneEl.querySelectorAll('.kb-overdue-row').forEach(rowEl=>
         rowEl.addEventListener('click',()=>kbMoveToToday(rowEl.dataset.move)));
     });
-    board.appendChild(colEl);
   });
   kbUpdateClear();kbUpdateSelBar();
 }
@@ -2097,6 +2106,7 @@ function kbSetFinished(t,val){
 function kbSubToggle(t,subId){
   const s=(t.subs||[]).find(x=>x.id===subId); if(!s)return;
   s.done=!s.done;
+  if(kbSubTextId===subId)kbSubTextId=null;
   const was=t.finished;
   kbSubsRollup(t);
   save();renderKanban();renderHome();renderCalendar();renderDayTasks();
@@ -2105,6 +2115,7 @@ function kbSubToggle(t,subId){
 }
 function kbSubDel(t,subId){
   t.subs=(t.subs||[]).filter(x=>x.id!==subId);
+  if(kbSubTextId===subId)kbSubTextId=null;        // 正在改的那条被删了，编辑态一起清掉
   if(!t.subs.length)delete t.subs; else kbSubsRollup(t);
   save();renderKanban();renderHome();renderCalendar();renderDayTasks();
   toast('已删除子任务');
@@ -2112,8 +2123,10 @@ function kbSubDel(t,subId){
 function kbSubsHtml(t){
   const subs=t.subs||[];
   if(!subs.length&&kbSubEditId!==t.id)return'';
-  const rows=subs.map(s=>`<div class="kb-sub${s.done?' done':''}" data-sub="${s.id}">
-      <span class="kb-sub-t">${esc(s.text)}</span>
+  const rows=subs.map(s=>`<div class="kb-sub${s.done?' done':''}${kbSubTextId===s.id?' editing':''}" data-sub="${s.id}">
+      ${kbSubTextId===s.id
+        ?`<input class="kb-sub-input kb-sub-edit" data-sub-edit="${s.id}" value="${esc(s.text)}" placeholder="改子任务，回车保存 · Esc 取消">`
+        :`<span class="kb-sub-t" title="点击改文字（右击也行）">${esc(s.text)}</span>`}
       <button class="kb-sub-fin${s.done?' on':''}" title="点击标记完成，再点一次取消">已完成</button>
       <button class="kb-sub-del" title="删除这条子任务">✕</button>
     </div>`).join('');
@@ -2121,8 +2134,35 @@ function kbSubsHtml(t){
     ?'<input class="kb-sub-input" placeholder="输入子任务，回车继续添加，Esc 结束">':'';
   return `<div class="kb-subs">${rows}${inp}</div>`;
 }
-function kbSubOpen(id){ kbSubEditId=id; renderKanban(); }
+function kbSubOpen(id){ kbSubEditId=id;kbSubTextId=null; renderKanban(); }   // 新增与改字互斥，避免同屏两个输入框
 function kbSubClose(){ kbSubEditId=null; renderKanban(); }
+/* ---- 改文字（点文字 / 右击子任务行进入行内编辑，可反复改） ----
+   kbSubTextFlush 把「正在改」那条未保存的内容静默落地 —— 不这么做的话，
+   从 A 条直接切换到 B 条时 A 的新内容会被重渲染丢掉。 */
+function kbSubTextFlush(){
+  const box=document.querySelector('.kb-sub-edit');
+  if(!box)return false;
+  const own=DB.tasks.find(x=>(x.subs||[]).some(y=>y.id===kbSubTextId));
+  const cur=own&&(own.subs||[]).find(x=>x.id===kbSubTextId);
+  if(!cur)return false;
+  const v=String(box.value||'').trim();
+  if(!v||v===cur.text)return false;
+  cur.text=v;return true;
+}
+function kbSubTextStart(t,subId){
+  const s=(t.subs||[]).find(x=>x.id===subId); if(!s)return;
+  if(kbSubTextId&&kbSubTextId!==subId&&kbSubTextFlush())save();
+  kbSubEditId=null;kbSubTextId=subId;renderKanban();
+}
+function kbSubTextClose(){ kbSubTextId=null; renderKanban(); }
+function kbSubTextCommit(t,subId,text){
+  const s=(t.subs||[]).find(x=>x.id===subId);
+  kbSubTextId=null;
+  const v=String(text||'').trim();
+  if(s&&v&&v!==s.text){s.text=v;save();toast('已修改子任务');}
+  else if(s&&!v)toast('内容为空，未修改（要删这条请点 ✕）');
+  renderKanban();
+}
 /* 提交一条子任务；写进模型后保持输入框打开，方便连续录入 */
 function kbSubCommit(t,text){
   const v=String(text||'').trim();
@@ -2130,7 +2170,7 @@ function kbSubCommit(t,text){
   t.subs=t.subs||[];
   t.subs.push({id:uid(),text:v,done:!!t.finished});   // 已完成的卡上新增，默认跟随主任务状态
   kbSubsRollup(t);
-  kbSubEditId=t.id;
+  kbSubEditId=t.id;kbSubTextId=null;
   save();renderKanban();renderHome();renderCalendar();renderDayTasks();
   toast('已添加子任务');
 }
@@ -2223,9 +2263,32 @@ function kbCard(t){
       const sid=row.dataset.sub;
       row.querySelector('.kb-sub-fin').addEventListener('click',e=>{e.stopPropagation();kbSubToggle(t,sid);});
       row.querySelector('.kb-sub-del').addEventListener('click',e=>{e.stopPropagation();kbSubDel(t,sid);});
-      row.querySelector('.kb-sub-t').addEventListener('click',e=>e.stopPropagation());
+      /* 改文字：点文字进编辑。用 mousedown + preventDefault 是因为 ——
+         ① 要抢在「新增框」blur 提交（它会重渲染）之前把状态设好，否则点击目标被换掉，点了没反应；
+         ② 阻止浏览器默认把焦点挪到 body，否则刚渲染出来的输入框会立刻失焦。 */
+      const tEl=row.querySelector('.kb-sub-t');
+      if(tEl){
+        tEl.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();kbSubTextStart(t,sid);});
+        tEl.addEventListener('click',e=>{e.stopPropagation();if(kbSubTextId!==sid)kbSubTextStart(t,sid);});
+      }
+      /* 右击这一行 = 改这条（而不是弹出「新增」框） */
+      row.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();kbSubTextStart(t,sid);});
     });
-    const inp=el.querySelector('.kb-sub-input');
+    /* 行内改字的框：回车保存 / Esc 取消 / 失焦保存（seq 过期即作废，防重复提交） */
+    const editInp=el.querySelector('.kb-sub-edit');
+    if(editInp){
+      const seqE=kbSubSeq,sidE=editInp.dataset.subEdit;
+      editInp.addEventListener('keydown',e=>{
+        e.stopPropagation();
+        if(e.key==='Enter'){e.preventDefault();kbSubTextCommit(t,sidE,editInp.value);}
+        else if(e.key==='Escape'){e.preventDefault();kbSubTextClose();}
+      });
+      editInp.addEventListener('blur',()=>{ if(seqE===kbSubSeq)kbSubTextCommit(t,sidE,editInp.value); });
+      editInp.addEventListener('mousedown',e=>e.stopPropagation());
+      editInp.addEventListener('click',e=>e.stopPropagation());
+      editInp.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();});
+    }
+    const inp=el.querySelector('.kb-sub-input:not(.kb-sub-edit)');
     if(inp){
       const seq=kbSubSeq;                    // 本轮渲染的序号；一旦重渲染就作废
       inp.addEventListener('keydown',e=>{
