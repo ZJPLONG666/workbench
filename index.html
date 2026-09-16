@@ -452,6 +452,32 @@ html[data-theme="dark"]{--kb-title-c:#EDEDF0}
 .kb-fin:hover{border-color:#7FB069;color:#52803C;transform:scale(1.06)}
 .kb-fin.on{background:#7FB069;border-color:#7FB069;color:#fff}
 .kb-fin.on:hover{background:#6EA15B;border-color:#6EA15B;color:#fff}
+/* ---- 子任务（工作区「每日任务」卡：右击卡片添加）----
+   每项右侧「已完成」与主任务同款绿色按钮；全部完成时主任务才算完成。 */
+.kb-subs{margin:6px 0 0;display:flex;flex-direction:column;gap:4px}
+.kb-sub{display:flex;align-items:center;gap:6px;padding:3px 5px 3px 8px;border-radius:8px;
+  background:rgba(255,255,255,.46);border:1px solid rgba(0,0,0,.05)}
+.kb-sub-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35;word-break:break-word}
+.kb-sub.done .kb-sub-t{text-decoration:line-through;opacity:.55}
+.kb-sub-fin{flex-shrink:0;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:700;line-height:1.5;
+  cursor:pointer;user-select:none;white-space:nowrap;border:1.5px solid var(--hairline);background:var(--surface);
+  color:var(--ink-2);transition:all .15s}
+.kb-sub-fin:hover{border-color:#7FB069;color:#52803C}
+.kb-sub-fin.on{background:#7FB069;border-color:#7FB069;color:#fff}
+.kb-sub-del{flex-shrink:0;width:16px;height:16px;padding:0;border:none;border-radius:5px;background:transparent;
+  color:var(--ink-2);font-size:11px;line-height:1;cursor:pointer;opacity:.32;transition:all .15s}
+.kb-sub-del:hover{opacity:1;background:rgba(239,68,68,.15);color:#dc2626}
+.kb-sub-input{width:100%;box-sizing:border-box;padding:4px 8px;border-radius:8px;font-size:12.5px;font-weight:600;
+  color:var(--ink);background:var(--surface);border:1.5px dashed var(--hairline);outline:none}
+.kb-sub-input:focus{border-style:solid;border-color:var(--badge-bg)}
+.kb-subadd{flex-shrink:0;padding:1px 8px;border-radius:var(--r-pill);font-size:10.5px;font-weight:700;cursor:pointer;
+  white-space:nowrap;border:1px dashed var(--hairline);background:transparent;color:var(--ink-2);transition:all .15s}
+.kb-subadd:hover{border-style:solid;border-color:var(--badge-bg);color:var(--badge-fg);background:rgba(255,255,255,.5)}
+.kb-subprog{font-size:10.5px;font-weight:700;color:var(--ink-2);background:rgba(255,255,255,.55);
+  border-radius:var(--r-pill);padding:0 6px;line-height:16px;flex-shrink:0}
+html[data-theme="dark"] .kb-sub{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.07)}
+html[data-theme="dark"] .kb-subadd:hover{background:rgba(255,255,255,.12)}
+html[data-theme="dark"] .kb-subprog{background:rgba(255,255,255,.11)}
 /* ---- 「保存任务」（段头右上角）：配色跟名字卡同族，啊鹏灰蓝 / 啊盈红灰 ---- */
 .kb-save{margin-left:6px;padding:3px 11px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;
   border:1.5px solid var(--kb-save-bd);background:var(--kb-save-bg);color:var(--kb-save-fg);transition:all .15s}
@@ -1972,6 +1998,10 @@ const KB_MEMBER_COLORS={'曾生':'#141414','老婆':'#e06ba4'};
 const KB_TEXT_COLORS=['#141414','#6b7280','#dc2626','#d97706','#2563eb','#7c3aed','#059669','#e06ba4'];
 let kbFilters={assignee:'',priority:'',search:''};
 let kbDragId=null,kbEditId=null,kbSelected=new Set();
+/* 子任务：正在录入的任务 id（右击卡片 / 点「＋子任务」触发）。
+   kbSubSeq 每轮 renderKanban 自增，用来让上一轮输入框的 blur 回调失效 ——
+   否则回车提交后元素被移除会再触发一次 blur，同一条子任务会被提交两遍。 */
+let kbSubEditId=null,kbSubSeq=0;
 let kbCalY,kbCalM,kbCalTaskId=null;
 
 function kbTasks(col){return DB.tasks.filter(t=>t.column===col).sort((a,b)=>(a.order||0)-(b.order||0));}
@@ -1988,6 +2018,7 @@ function nowHM(){const d=new Date();const p=n=>String(n).padStart(2,'0');return 
 function dueOverdue(t){return t.due&&!isNaN(new Date(t.due))&&new Date(t.due)<=new Date()&&t.status!=='done';}
 
 function renderKanban(){
+  kbSubSeq++;                                   // 让上一轮渲染里的输入框回调失效
   const badge=document.getElementById('kbTodayBadge');
   const now=new Date();
   badge.textContent=`📅 ${now.getMonth()+1}月${now.getDate()}日`;
@@ -2021,6 +2052,8 @@ function renderKanban(){
       list.forEach(t=>{
         if(laneId&&kbLaneOf(t)!==laneId)return;
         const c=kbCard(t);if(!kbVisible(t))c.style.display='none';listEl.appendChild(c);
+        const si=c.querySelector('.kb-sub-input');   // 脱离文档的节点聚焦无效，必须入树后再聚焦
+        if(si)si.focus();
       });
       laneEl.addEventListener('dragover',kbDragOver);
       laneEl.addEventListener('dragleave',kbDragLeave);
@@ -2037,6 +2070,64 @@ function renderKanban(){
   });
   kbUpdateClear();kbUpdateSelBar();
 }
+/* ================================================================
+   子任务（工作区「每日任务」卡：右击卡片 或 点「＋ 子任务」添加）
+   —— 主任务与子任务双向联动：全部子任务完成 ⟺ 主任务完成
+================================================================ */
+/* 只有工作区（啊鹏 / 啊盈 两段）的卡带「已完成」按钮，子任务也就挂在这里 */
+function kbSubsReady(t){return !!KB_LANES[t.column];}
+/* 子 → 主：所有子任务都 done 时，主任务才算完成（没有子任务则不受影响） */
+function kbSubsRollup(t){
+  if(!t.subs||!t.subs.length)return;
+  t.finished=t.subs.every(s=>s.done);
+}
+/* 主 → 子：切换主任务完成态时，子任务全部跟随 */
+function kbSetFinished(t,val){
+  t.finished=!!val;
+  if(t.subs&&t.subs.length)t.subs.forEach(s=>{s.done=t.finished;});
+  save();renderKanban();renderHome();renderCalendar();renderDayTasks();
+  toast(t.finished?'已完成 ✅':'已取消完成');
+}
+function kbSubToggle(t,subId){
+  const s=(t.subs||[]).find(x=>x.id===subId); if(!s)return;
+  s.done=!s.done;
+  const was=t.finished;
+  kbSubsRollup(t);
+  save();renderKanban();renderHome();renderCalendar();renderDayTasks();
+  if(t.finished&&!was)toast('子任务全部完成，主任务已自动完成 ✅');
+  else if(!t.finished&&was)toast('还有子任务没完成，主任务已恢复未完成');
+}
+function kbSubDel(t,subId){
+  t.subs=(t.subs||[]).filter(x=>x.id!==subId);
+  if(!t.subs.length)delete t.subs; else kbSubsRollup(t);
+  save();renderKanban();renderHome();renderCalendar();renderDayTasks();
+  toast('已删除子任务');
+}
+function kbSubsHtml(t){
+  const subs=t.subs||[];
+  if(!subs.length&&kbSubEditId!==t.id)return'';
+  const rows=subs.map(s=>`<div class="kb-sub${s.done?' done':''}" data-sub="${s.id}">
+      <span class="kb-sub-t">${esc(s.text)}</span>
+      <button class="kb-sub-fin${s.done?' on':''}" title="点击标记完成，再点一次取消">已完成</button>
+      <button class="kb-sub-del" title="删除这条子任务">✕</button>
+    </div>`).join('');
+  const inp=kbSubEditId===t.id
+    ?'<input class="kb-sub-input" placeholder="输入子任务，回车继续添加，Esc 结束">':'';
+  return `<div class="kb-subs">${rows}${inp}</div>`;
+}
+function kbSubOpen(id){ kbSubEditId=id; renderKanban(); }
+function kbSubClose(){ kbSubEditId=null; renderKanban(); }
+/* 提交一条子任务；写进模型后保持输入框打开，方便连续录入 */
+function kbSubCommit(t,text){
+  const v=String(text||'').trim();
+  if(!v){kbSubClose();return;}
+  t.subs=t.subs||[];
+  t.subs.push({id:uid(),text:v,done:!!t.finished});   // 已完成的卡上新增，默认跟随主任务状态
+  kbSubsRollup(t);
+  kbSubEditId=t.id;
+  save();renderKanban();renderHome();renderCalendar();renderDayTasks();
+  toast('已添加子任务');
+}
 function kbCard(t){
   const el=document.createElement('div');
   el.className='kb-card'+(t.finished?' finished':'')+(kbSelected.has(t.id)?' selected':'')+(kbEditId===t.id?' editing':'');
@@ -2045,6 +2136,7 @@ function kbCard(t){
   /* 工作区分段内：不重复显示负责人头像（段头名字卡已标明）；改为显示「已完成」按钮 */
   const inLane=!!KB_LANES[t.column];
   const showAvatar=!inLane,showFinish=inLane;
+  const subsHtml=inLane?kbSubsHtml(t):'';   // 子任务只在「每日任务」（工作区两段）里渲染
   el.innerHTML=`
     <span class="kb-drag" draggable="true" title="拖动排序">⠿</span>
     <span class="kb-check" title="选择"></span>
@@ -2053,10 +2145,12 @@ function kbCard(t){
         <div class="kb-title" contenteditable="${kbEditId===t.id}" spellcheck="false"
           style="font-size:${st.fontSize||'13.5px'};font-weight:${st.fontWeight||'700'};color:${st.color||'var(--kb-title-c)'}">${esc(t.title)}</div>
         <span class="kb-prio ${t.priority.toLowerCase()}" title="点击切换优先级">${t.priority}</span>
-        ${showFinish?`<button class="kb-fin${t.finished?' on':''}" title="点击标记完成，再点一次取消">已完成</button>`:''}
+        ${showFinish?`<button class="kb-fin${t.finished?' on':''}" title="点击标记完成（子任务会一起勾上），再点一次取消">已完成</button>`:''}
       </div>
+      ${subsHtml}
       <div class="kb-foot">
         ${showAvatar?`<span class="kb-avatar" style="background:${KB_MEMBER_COLORS[t.assignee]||'#999'}" title="点击更换负责人">${t.assignee==='老婆'?'婆':'曾'}</span>`:''}
+        ${inLane?`<button class="kb-subadd" title="添加子任务（也可以直接在卡片上右键）">＋ 子任务</button>${t.subs&&t.subs.length?`<span class="kb-subprog" title="子任务进度">☑ ${t.subs.filter(s=>s.done).length}/${t.subs.length}</span>`:''}`:''}
         <span class="kb-due ${kbOverdue(t)?'overdue':''}" title="点击修改日期">🗓 ${kbDueText(t)}${kbOverdue(t)?' ⚠️':''}</span>
         ${t.due?`<span class="kb-due ${dueOverdue(t)?'overdue':''}" title="完成截止时间">⏰ ${dueTimeText(t)}</span>`:''}
       </div>
@@ -2106,14 +2200,38 @@ function kbCard(t){
   const finEl=el.querySelector('.kb-fin');
   if(finEl)finEl.addEventListener('click',e=>{
     e.stopPropagation();
-    t.finished=!t.finished;
-    save();renderKanban();renderHome();
-    toast(t.finished?'已完成 ✅':'已取消完成');
+    kbSetFinished(t,!t.finished);            // 主 → 子：子任务一起勾上 / 一起取消
   });
   /* 日期：点击弹小日历 */
   el.querySelector('.kb-due').addEventListener('click',e=>{
     e.stopPropagation();kbOpenCal(e.clientX,e.clientY,t.id);
   });
+  /* ---- 子任务：右击卡片 或 点「＋ 子任务」都能加 ---- */
+  if(inLane){
+    el.addEventListener('contextmenu',e=>{
+      e.preventDefault();e.stopPropagation();kbSubOpen(t.id);
+    });
+    const addEl=el.querySelector('.kb-subadd');
+    if(addEl)addEl.addEventListener('click',e=>{e.stopPropagation();kbSubOpen(t.id);});
+    el.querySelectorAll('.kb-sub').forEach(row=>{
+      const sid=row.dataset.sub;
+      row.querySelector('.kb-sub-fin').addEventListener('click',e=>{e.stopPropagation();kbSubToggle(t,sid);});
+      row.querySelector('.kb-sub-del').addEventListener('click',e=>{e.stopPropagation();kbSubDel(t,sid);});
+      row.querySelector('.kb-sub-t').addEventListener('click',e=>e.stopPropagation());
+    });
+    const inp=el.querySelector('.kb-sub-input');
+    if(inp){
+      const seq=kbSubSeq;                    // 本轮渲染的序号；一旦重渲染就作废
+      inp.addEventListener('keydown',e=>{
+        e.stopPropagation();
+        if(e.key==='Enter'){e.preventDefault();kbSubCommit(t,inp.value);}
+        else if(e.key==='Escape'){e.preventDefault();kbSubClose();}
+      });
+      inp.addEventListener('blur',()=>{ if(seq===kbSubSeq)kbSubCommit(t,inp.value); });
+      inp.addEventListener('click',e=>e.stopPropagation());
+      inp.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();});
+    }
+  }
   return el;
 }
 /* ---- 拖拽排序（「段」即投放区；拖到另一段 = 换负责人） ---- */
@@ -2187,6 +2305,7 @@ function kbRollDaily(){
       t.date=today; t.dueDate=today.slice(5);
       if(t.due&&hh)t.due=today+'T'+hh;
       t.finished=false; t.reminded=false;
+      if(t.subs&&t.subs.length)t.subs.forEach(s=>{s.done=false;});   // 子任务随每日滚动一起清零
       changed=true;
     });
     set.lastRoll=today; changed=true;
@@ -2460,6 +2579,7 @@ function renderDayTasks(){
       <div class="flex-1 min-w-0">
         <b class="text-sm block truncate ${t.status==='done'?'line-through opacity-50':''}">${esc(t.title)}</b>
         <span class="text-[11px] font-bold" style="color:var(--ink-2)">${esc(t.assignee)} · ${t.priority}</span>
+        ${t.subs&&t.subs.length?`<span class="kb-subprog">☑ ${t.subs.filter(s=>s.done).length}/${t.subs.length}</span>`:''}
         ${t.due?`<span class="due-chip ${dueTimeText(t)<=nowHM()&&t.status!=='done'?'over':''}">⏰ ${dueTimeText(t)}</span>`:''}
       </div>
     </div>`).join('')||'<p class="text-xs text-center py-4 font-bold" style="color:var(--ink-2)">这一天还没有任务，添加一条吧</p>';
