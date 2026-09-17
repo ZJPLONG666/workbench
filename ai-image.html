@@ -1140,7 +1140,15 @@ html[data-theme="dark"] .step.done{border-color:#2b5c46}
           <div class="switchrow"><div><div class="lbl">本地中转模式</div>
             <div class="sub">开启后所有请求先发往本机中转（如 http://127.0.0.1:3000/v1），用于绕开浏览器 CORS</div></div>
             <input type="checkbox" id="advRelay" style="width:16px;height:16px;accent-color:var(--accent)"></div>
-          <div class="field"><label>中转地址</label><input type="text" id="advRelayUrl" placeholder="http://127.0.0.1:3000"></div>
+          <div class="field"><label>中转地址</label><input type="text" id="advRelayUrl" placeholder="http://127.0.0.1:3000">
+            <div class="hint">本应用启动时会自动探测该地址：探测到就自动走中转，不用手动开上面的开关。</div></div>
+          <div class="field"><label>连接状态</label>
+            <div id="relayStat" class="hint">未检测</div>
+            <div class="btn-row">
+              <button class="btn xs" onclick="CFG.checkRelay(true)">检测中转</button>
+              <button class="btn xs" onclick="CFG.selfTest()">一键网络自检</button>
+            </div>
+            <div class="hint" id="selfTestOut"></div></div>
         </div>
       </div>
       <div class="sec">
@@ -1339,6 +1347,30 @@ function pickFiles(accept, multiple) {
   });
 }
 function fileToDataUrl(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+/* 参考图统一压到长边 ≤2048、JPEG 0.92：手机直出图动辄 5–10MB，base64 后十几 MB，
+   既拖慢请求也容易被上游判为超限；压缩后画质对生图参考完全够用 */
+async function shrinkDataUrl(u, maxEdge, q) {
+  maxEdge = maxEdge || 2048; q = q || 0.92;
+  if (!/^data:image\//i.test(u)) return u;
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = u; });
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const big = Math.max(w, h) > maxEdge, heavy = u.length > 1.6 * 1024 * 1024;
+    if (!big && !heavy) return u;
+    const k = Math.min(1, maxEdge / Math.max(w, h));
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    const out = cv.toDataURL('image/jpeg', q);
+    if (out.length >= u.length) return u;
+    LOG.debug(`参考图压缩：${w}x${h} ${(u.length / 1048576).toFixed(1)}MB → ${cv.width}x${cv.height} ${(out.length / 1048576).toFixed(1)}MB`);
+    return out;
+  } catch (e) { return u; }
+}
+async function imgFieldToDataUrl(f) {
+  const raw = await fileToDataUrl(f);
+  return /^image\//i.test(f.type || '') ? await shrinkDataUrl(raw) : raw;
+}
 function copyText(t) {
   if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
   const ta = mk('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -1912,8 +1944,51 @@ const CFG = {
       const [id, k] = x.split(':');
       $('#' + id).onchange = e => { a[k] = Number(e.target.value) || 0; this.save(true); };
     });
-    $('#advRelay').onchange = e => { a.relay = e.target.checked; this.save(true); };
+    $('#advRelay').onchange = e => { a.relay = e.target.checked; this.save(true); this.checkRelay(true); };
     $('#advRelayUrl').oninput = e => { a.relayUrl = e.target.value; this.save(true); };
+    this.renderRelayStat();
+  },
+  /* ---------- 中转状态与网络自检 ---------- */
+  renderRelayStat() {
+    const el = $('#relayStat'); if (!el) return;
+    const u = API.relayUrl();
+    if (API.relayOk === true) el.innerHTML = `<span class="badge ok">已连接</span> ${esc(u)}${API.relayInfo && API.relayInfo.upstream ? ' → ' + esc(API.relayInfo.upstream) : ''}`;
+    else if (API.relayOk === false) el.innerHTML = `<span class="badge err">未连接</span> ${esc(u)}（直连国内接口会被 CORS 拦截）`;
+    else el.innerHTML = '<span class="spin"></span> 检测中…';
+  },
+  async checkRelay(manual) {
+    const el = $('#relayStat'); if (el) el.innerHTML = '<span class="spin"></span> 检测中…';
+    await API.pingRelay(true);
+    this.renderRelayStat();
+    if (manual) UI.toast(API.relayOk ? '本地中转已连接 🦞' : '未检测到本地中转：请先双击 E:\\ai-image-relay\\start-relay.bat', API.relayOk ? 'ok' : 'warn', 5000);
+    return API.relayOk;
+  },
+  async selfTest() {
+    const out = $('#selfTestOut'); if (!out) return;
+    out.innerHTML = '<span class="spin"></span> 自检中…';
+    const lines = [];
+    await API.pingRelay(true);
+    lines.push(API.relayOk
+      ? '① 本地中转 <span class="badge ok">已连接</span> ' + esc(API.relayUrl())
+      : '① 本地中转 <span class="badge err">未连接</span> ' + esc(API.relayUrl()) + ' → 双击 E:\\ai-image-relay\\start-relay.bat 启动');
+    const chs = this.data.channels || [];
+    if (!chs.length) lines.push('② 渠道 <span class="badge warn">尚未配置</span> → 到「服务配置」添加服务商并填密钥');
+    for (const c of chs) {
+      const hasKey = !!(c.key || (c.ak && c.sk));
+      let reach;
+      try {
+        const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 6000);
+        const probe = API.useRelay() ? API.relayUrl() + '/__probe' : String(c.base || '').replace(/\/+$/, '') + '/models';
+        const r = await fetch(probe, { method: 'GET', cache: 'no-store', signal: ac.signal });
+        clearTimeout(t);
+        reach = `网络可达（HTTP ${r.status}）`;
+      } catch (e) {
+        reach = API.useRelay() ? '中转不通（中转没启动？）' : '直连被 CORS 拦截';
+      }
+      lines.push(`② ${esc(c.name)} ${hasKey ? '<span class="badge ok">有密钥</span>' : '<span class="badge warn">缺密钥</span>'} · ${esc(reach)} · 生图模型=${esc(((c.models && c.models.image) || []).join(' / ') || '未填')}`);
+    }
+    out.innerHTML = lines.join('<br>');
+    LOG.info('自检完成 → ' + lines.map(l => l.replace(/<[^>]+>/g, '')).join(' | '));
   },
   renderHelpSvc() {
     $('#helpSvcBody').innerHTML = `
@@ -1925,7 +2000,8 @@ const CFG = {
       · 提示「当前选择的模型不支持图片输入」→ 在当前任务的服务配置中改选支持视觉输入的模型<br>
       · 生成失败 / 测试密钥失败 / 请求超时 → 检查密钥、模型和网络，查看日志后重试<br>
       · 报 404 / ModelNotOpen → 模型未开通，去控制台开通后等 2–3 分钟<br>
-      · Failed to fetch → 浏览器 CORS 拦截，改用本地中转（高级设置里开启）`;
+      · Failed to fetch → 浏览器被 CORS 拦截（国内接口不返回 CORS 头，直连必失败）。本应用会自动走本地中转；若提示「本地中转没有运行」，双击 E:\\ai-image-relay\\start-relay.bat 启动即可<br>
+      · 换电脑 / 重装后 → 把 E:\\ai-image-relay 拷过去，双击 start-relay.bat 即可`;
   },
   /* ---------- 测试与探测 ---------- */
   async test(id, type) {
@@ -2292,11 +2368,37 @@ const CFG_SYNC = {
    - 支持 OpenAI 兼容、通用异步轮询、即梦火山签名
 --------------------------------------------------------------- */
 const API = {
+  /* ---------- 本地中转自动探测 ----------
+     背景：火山方舟等国内接口的 POST 响应不带 Access-Control-Allow-Origin，
+     浏览器直连必然 Failed to fetch，只能经本机中转转发。
+     这里启动时自动探活，探到就自动使用，不需要用户手动开开关。 */
+  relayOk: null, relayInfo: null, relayCheckedAt: 0,
+  relayUrl() { return String((CFG.data.adv && CFG.data.adv.relayUrl) || 'http://127.0.0.1:3000').replace(/\/+$/, ''); },
+  useRelay() { return !!(CFG.data.adv && CFG.data.adv.relay) || this.relayOk === true; },
+  async pingRelay(force) {
+    const now = Date.now();
+    if (!force && this.relayCheckedAt && now - this.relayCheckedAt < 10000) return this.relayOk;
+    this.relayCheckedAt = now;
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 2500);
+    try {
+      const r = await fetch(this.relayUrl() + '/health', { cache: 'no-store', signal: ac.signal });
+      const j = await r.json().catch(() => null);
+      this.relayOk = r.ok && !!j && j.ok === true;
+      this.relayInfo = this.relayOk ? j : null;
+      if (this.relayOk) LOG.info(`本地中转已连接：${this.relayUrl()} → ${(j && j.upstream) || '默认上游'}`);
+      else LOG.warn(`中转地址有响应但格式不对（HTTP ${r.status}）：${this.relayUrl()}`);
+    } catch (e) {
+      this.relayOk = false; this.relayInfo = null;
+      LOG.warn(`未检测到本地中转（${this.relayUrl()}）：${e.message}`);
+    } finally { clearTimeout(timer); }
+    return this.relayOk;
+  },
   /* 拼接 base + path，避免重复 /v1 */
   url(ch, path) {
     let base = String((ch && ch.base) || '').replace(/\/+$/, '');
     if (!/^https?:\/\//i.test(base)) throw new Error('Base URL 仅支持 http/https 协议');
-    if (CFG.data.adv.relay && CFG.data.adv.relayUrl) base = String(CFG.data.adv.relayUrl).replace(/\/+$/, '');
+    if (this.useRelay()) base = this.relayUrl();
     if (!path) return base;
     if (/\/(v1|v1beta|v3|api\/v3)$/i.test(base) && /^\/(v1|v1beta)\//i.test(path)) path = path.replace(/^\/(v1|v1beta)/i, '');
     return base + path;
@@ -2326,7 +2428,15 @@ const API = {
       return json != null ? json : text;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error(ac.signal.reason && ac.signal.reason.message ? ac.signal.reason.message : '请求已取消');
-      if (/Failed to fetch|NetworkError|Load failed/i.test(e.message)) throw new Error('Failed to fetch：网络不通或被跨域（CORS）拦截。国内接口请改用本地中转，或检查网络/VPN/TUN 路由。');
+      if (/Failed to fetch|NetworkError|Load failed/i.test(e.message)) {
+        const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(url);
+        const err = new Error(isLocal
+          ? `本地中转不可用：${url}`
+          : `浏览器直连被跨域拦截：${url}`);
+        err.network = isLocal ? 'relay-down' : 'cors';
+        err.url = url;
+        throw err;
+      }
       throw e;
     } finally { clearTimeout(timer); }
   },
@@ -2335,6 +2445,8 @@ const API = {
     const m = String((e && e.message) || e || '未知错误');
     const s = (e && e.status) || 0;
     const has = re => re.test(m);
+    if (e && e.network === 'relay-down') return `本地中转没有运行：双击 E:\\ai-image-relay\\start-relay.bat 启动（窗口保持开着），再点生成即可`;
+    if (e && e.network === 'cors') return '浏览器直连被跨域拦截：该接口不返回 CORS 头，浏览器无法直连。启动本地中转（双击 E:\\ai-image-relay\\start-relay.bat）后本应用会自动识别并走中转';
     if (has(/未开通|ModelNotOpen|not activated|not open/i)) return '模型未开通：请前往对应控制台开通该模型服务后再试（开通后等 2–3 分钟）';
     if (has(/InvalidEndpointOrModel|does not exist|model[_ -]?not[_ -]?found|模型.{0,12}(不存在|不可用|不支持)/i)) return '模型不存在或未开通：检查模型 ID 是否带日期后缀，以及账号是否已开通该模型';
     if (s === 401 || has(/invalid.{0,4}api.{0,4}key|unauthor|密钥无效|access key/i)) return 'API 密钥无效：检查 Key 是否填对、有无多余空格，确认与 API 地址属于同一平台';
@@ -2758,7 +2870,7 @@ const SKU = {
     const files = await pickFiles(isVid ? 'video/*' : 'image/*', multi);
     if (!files.length) return;
     for (const f of files) {
-      const url = await fileToDataUrl(f);
+      const url = await imgFieldToDataUrl(f);
       if (S.imgs[poolKey].some(x => x.url === url)) { LOG.debug('重复上传已忽略'); continue; }
       S.imgs[poolKey].push({ id: uid(), url, name: f.name, size: f.size });
     }
@@ -2774,7 +2886,7 @@ const SKU = {
     const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
     if (!files.length) return;
     Promise.all(files.map(async f => {
-      const url = await fileToDataUrl(f);
+      const url = await imgFieldToDataUrl(f);
       if (S.imgs[poolKey].some(x => x.url === url)) return;
       S.imgs[poolKey].push({ id: uid(), url, name: f.name, size: f.size });
     })).then(() => { this.renderPool(poolKey); if (poolKey === 'vrInput') this.syncRows(); if (poolKey === 'exInput') EXP.page(0, true); });
@@ -2863,20 +2975,21 @@ const SKU = {
     this.renderRp();
     S.busy = true; S.abort = new AbortController();
     const refs = target ? [target.url] : [];
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0; const errSet = new Set();
     await poolRun(samples, CFG.data.adv.conc || 2, async (s) => {
       const idx = S.results.rp.findIndex(x => x.id === s.id);
       try {
         const url = await API.genImage({ ch: r.ch, model: r.model, prompt, size: $('#vrSize') ? $('#vrSize').value : '1920x2560', refs: refs.concat([s.url]), signal: S.abort.signal, onMsg: m => { S.results.rp[idx].msg = m; this.renderRp(); } });
         S.results.rp[idx].url = url; S.results.rp[idx].loading = false; ok++;
       } catch (e) {
-        S.results.rp[idx].loading = false; S.results.rp[idx].err = API.explain(e); fail++;
-        UI.toast('SKU替换图片生成失败：' + API.explain(e), 'err', 5000);
+        const ex = API.explain(e);
+        S.results.rp[idx].loading = false; S.results.rp[idx].err = ex; fail++; errSet.add(ex);
       }
       this.renderRp();
     }, (d, t) => { S.prog = `${d}/${t}`; $('#rpProg').textContent = `生成中 ${d}/${t}`; });
     S.busy = false;
     $('#rpProg').textContent = `完成：成功 ${ok} · 失败 ${fail}`;
+    if (fail) UI.toast(`替换失败 ${fail} 张：${Array.from(errSet).slice(0, 2).join('；')}`, 'err', 8000);
     LOG.info(`替换完成 成功${ok} 失败${fail}`);
   },
   renderRp() {
@@ -3926,6 +4039,10 @@ async function boot() {
   LOG.add('info', 'AI图片生成器 · 小刀复刻版 启动');
   await STORE.init();
   CFG.load();
+  API.pingRelay().then(ok => {
+    CFG.renderRelayStat();
+    if (ok) UI.toast('本地中转已连接，接口可正常调用 🦞', 'ok', 4000);
+  });
   UI.init();
   S.init();
   await Proj.load();
