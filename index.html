@@ -332,7 +332,7 @@ input,select,textarea{outline:none;font-family:inherit}
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
 .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
-.i-radar{background:var(--c-mint)} .i-aiimg{background:var(--c-peach)}
+.i-radar{background:var(--c-mint)}
 .flat-app-ico:hover{transform:scale(1.07)}
 .flat-app-name{font-size:12px;font-weight:700;color:var(--ink)}
 
@@ -779,7 +779,7 @@ html[data-theme="dark"] .home-pill.dark-pill{border:1px solid rgba(255,255,255,.
   .dock-wb{width:52px;height:52px;margin-top:-26px}
   header{max-width:100%}
 }
-/* 9 个导航按钮：440px 以下再缩一档，否则 Dock 会超出屏幕 */
+/* 导航按钮较多：440px 以下再缩一档，否则 Dock 会超出屏幕 */
 @media(max-width:440px){
   .dock{padding:7px 8px;gap:2px}
   .dock .dbtn{width:36px;height:36px}
@@ -912,17 +912,12 @@ html[data-theme="dark"] .kpi .kv,html[data-theme="dark"] .kpi .kl{color:var(--in
 .i-task{background:var(--c-sky)} .i-cal{background:var(--c-rose)} .i-data{background:var(--c-mint)}
 .i-acc{background:var(--c-lilac)} .i-sync{background:var(--c-sky)} .i-iss{background:var(--c-sand)}
 .i-wb{background:var(--c-lilac)} .i-profit{background:var(--c-lime)}
-.i-radar{background:var(--c-mint)} .i-aiimg{background:var(--c-peach)}
+.i-radar{background:var(--c-mint)}
 
 /* 爆品雷达 iframe 视图 */
 .radar-wrap{margin-top:4px;border-radius:18px;overflow:hidden;border:1px solid var(--card-border);background:#0d1120}
 .radar-wrap iframe{width:100%;height:calc(100vh - 220px);min-height:640px;border:0;display:block}
 @media(max-width:640px){.radar-wrap iframe{height:calc(100vh - 250px);min-height:520px}}
-/* ==================== AI 图片生成器 ==================== */
-.aiiw-wrap{margin-top:4px;border-radius:18px;overflow:hidden;border:1px solid var(--card-border);background:var(--surface)}
-.aiiw-wrap iframe{width:100%;height:calc(100vh - 220px);min-height:640px;border:0;display:block}
-@media(max-width:640px){.aiiw-wrap iframe{height:calc(100vh - 250px);min-height:520px}}
-
 /* 底部 Dock 改造为模板风格 */
 .dock{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;
   display:flex;align-items:center;gap:4px;padding:7px;border-radius:999px;
@@ -1031,7 +1026,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
     <a data-nav="issues"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg>清单</a>
     <a data-nav="profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg>利润</a>
     <a data-nav="radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg>雷达</a>
-    <a data-nav="aiimg"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17.5l4.5-4.5 3.5 3.5 3-3 5 5"/></svg>生图</a>
     <a data-nav="ideas"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.7 10.7c.5.5.9 1.1 1 1.8l.1.5h5.2l.1-.5c.1-.7.5-1.3 1-1.8A6 6 0 0 0 12 3z"/></svg>灵感</a>
   </nav>
   <button class="topcircle" id="refreshBtn" onclick="quickRefresh()" title="立即同步刷新（拉取云端最新数据）">
@@ -1064,7 +1058,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <div class="chip" onclick="openApp('accounts')"><span class="ci" style="background:var(--c-lilac)"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="9" r="3.2"/><path d="M3.5 19c.5-3.2 2.8-5 6-5s5.5 1.8 6 5.5"/></svg></span>账号</div>
       <div class="chip" onclick="openApp('profit')"><span class="ci" style="background:var(--c-lime)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></span>利润</div>
       <div class="chip" onclick="openApp('radar')"><span class="ci" style="background:var(--c-mint)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></span>雷达</div>
-      <div class="chip" onclick="openApp('aiimg')"><span class="ci" style="background:var(--c-peach)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17.5l4.5-4.5 3.5 3.5 3-3 5 5"/></svg></span>生图</div>
     </div>
 
     <div class="pc-grid">
@@ -1095,7 +1088,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
           <div class="app" onclick="openApp('issues')"><div class="aico i-iss"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></div><span class="anm">双十一购物清单</span></div>
           <div class="app" onclick="openApp('profit')"><div class="aico i-profit"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></div><span class="anm">每日利润</span></div>
           <div class="app" onclick="openApp('radar')"><div class="aico i-radar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></div><span class="anm">爆品雷达</span></div>
-          <div class="app" onclick="openApp('aiimg')"><div class="aico i-aiimg"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17.5l4.5-4.5 3.5 3.5 3-3 5 5"/></svg></div><span class="anm">AI图片生成器</span></div>
           <div class="app" onclick="toggleWB(true)"><div class="aico i-wb"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10h7M8.5 13h4"/></svg></div><span class="anm">小策</span></div>
         </div>
       </div>
@@ -1391,17 +1383,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   </div>
 
   <!-- ============ 多设备同步 ============ -->
-  <!-- ============ AI 图片生成器（工作台内嵌） ============ -->
-  <section id="view-aiimg" class="view">
-    <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <h2 class="section-h flex-1">🎨 AI图片生成器</h2>
-      <button class="pillbtn" onclick="aiImgReload()">🔄 刷新</button>
-      <button class="pillbtn dark" onclick="window.open('ai-image.html?v='+(typeof AIIMG_VER!=='undefined'?AIIMG_VER:Date.now()),'_blank')">⛶ 全屏打开</button>
-    </div>
-    <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">爆款封面提示词生成 · 参考图反推 · 多维裂变 · 批量出图 · 支持豆包 Seedream / 即梦 / OpenAI 兼容接口</p>
-    <div class="aiiw-wrap"><iframe id="aiImgFrame" title="AI图片生成器" loading="lazy" allow="clipboard-read; clipboard-write"></iframe></div>
-  </section>
-
   <section id="view-sync" class="view">
     <h2 class="section-h mb-5">多设备同步</h2>
     <div class="card p-6 mb-4">
@@ -1552,7 +1533,6 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
   <button class="dbtn" data-nav="issues" title="双十一购物清单"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9.5h16M4 15h16M10 4v16"/></svg></button>
   <button class="dbtn" data-nav="profit" title="每日利润"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 7.6l3 4 3-4M12 11.6V17M9.4 13.1h5.2M9.4 15h5.2"/></svg></button>
   <button class="dbtn" data-nav="radar" title="爆品雷达"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-3.8"/></svg></button>
-  <button class="dbtn" data-nav="aiimg" title="AI图片生成器"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17.5l4.5-4.5 3.5 3.5 3-3 5 5"/></svg></button>
   <button class="dbtn" data-nav="ideas" title="灵感积累"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.7 10.7c.5.5.9 1.1 1 1.8l.1.5h5.2l.1-.5c.1-.7.5-1.3 1-1.8A6 6 0 0 0 12 3z"/></svg></button>
 </nav>
 
@@ -1696,8 +1676,8 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ================================================================
    导航：底部 Dock + 视图切换
 ================================================================ */
-const views=['home','kanban','calendar','dashboard','accounts','sync','issues','radar','aiimg','profit','ideas'];
-const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'双十一购物清单',radar:'爆品雷达',aiimg:'AI图片生成器',profit:'每日利润',ideas:'灵感积累'};
+const views=['home','kanban','calendar','dashboard','accounts','sync','issues','radar','profit','ideas'];
+const titles={home:'首页',kanban:'任务看板',calendar:'日程记录',dashboard:'数据看板',accounts:'账号管理',sync:'多设备同步',issues:'双十一购物清单',radar:'爆品雷达',profit:'每日利润',ideas:'灵感积累'};
 let navStack=['home'];
 document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click',()=>openApp(btn.dataset.nav));
@@ -1717,7 +1697,6 @@ function openApp(name){
   if(name==='sync')renderSync();
   if(name==='issues')renderIssues();
   if(name==='radar')loadRadar();
-  if(name==='aiimg')loadAiImg();
   if(name==='profit')renderProfit();
   if(name==='ideas')renderIdeas();
 }
@@ -1730,25 +1709,6 @@ function loadRadar(force){
   if(force||!f.getAttribute('src'))f.setAttribute('src','baopin-radar.html?v='+RADAR_VER+'&d='+stamp+(force?('&t='+Date.now()):''));
 }
 function radarReload(){loadRadar(true);}
-/* ===================== AI 图片生成器（iframe 懒加载 + 主题跟随） ===================== */
-const AIIMG_VER='2f9809e5';   // 应用文件内容哈希：改版后同步更新，避开浏览器缓存
-function aiImgTheme(){return document.documentElement.dataset.theme==='dark'?'dark':'light';}
-function loadAiImg(force){
-  const f=document.getElementById('aiImgFrame'); if(!f)return;
-  /* 已加载过且非强制刷新时直接复用，避免重载丢失正在编辑的项目 */
-  if(!force&&f.getAttribute('src'))return;
-  f.setAttribute('src','ai-image.html?v='+AIIMG_VER+'&theme='+aiImgTheme()+(force?('&t='+Date.now()):''));
-}
-function aiImgReload(){loadAiImg(true);}
-/* 工作台切换白天/黑夜时通知内嵌应用换肤 */
-function syncAiImgTheme(){
-  const f=document.getElementById('aiImgFrame');
-  if(!f||!f.getAttribute('src'))return;
-  const th=aiImgTheme();
-  try{f.contentWindow.postMessage({type:'aiimg-theme',theme:th},'*');}catch(e){}
-  try{ if(f.contentDocument&&f.contentDocument.documentElement)
-        f.contentDocument.documentElement.setAttribute('data-theme',th); }catch(e){}
-}
 /* ===================== 双十一购物清单 ===================== */
 const ISSUE_FIELDS=['客户名','卖出号','采购单号','物流单号','问题','怎么处理','商家回复状态','目前进度更新','客诉时间','客户问题截图'];
 const ISSUE_DEF_W=[120,130,140,140,140,150,140,150,120,160];
@@ -4749,7 +4709,7 @@ checkReminders();startReminderLoop();
     if(ic)ic.textContent=t==='dark'?'☀️':'🌙';
     try{localStorage.setItem(KEY,t);}catch(e){}
   }
-  window.toggleTheme=function(){ apply(html.dataset.theme==='dark'?'light':'dark'); if(window.syncAiImgTheme){try{syncAiImgTheme();}catch(e){}} };
+  window.toggleTheme=function(){ apply(html.dataset.theme==='dark'?'light':'dark'); };
   apply(html.dataset.theme==='dark'?'dark':'light');
 })();
 </script>
