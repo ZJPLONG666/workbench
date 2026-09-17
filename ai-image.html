@@ -2422,8 +2422,21 @@ const API = {
      浏览器直连必然 Failed to fetch，只能经本机中转转发。
      这里启动时自动探活，探到就自动使用，不需要用户手动开开关。 */
   relayOk: null, relayInfo: null, relayCheckedAt: 0,
-  relayUrl() { return String((CFG.data.adv && CFG.data.adv.relayUrl) || 'http://127.0.0.1:3000').replace(/\/+$/, ''); },
-  useRelay() { return !!(CFG.data.adv && CFG.data.adv.relay) || this.relayOk === true; },
+  /* CFG.data 在 boot() 完成前为 null，这里必须做存在性判断 */
+  relayUrl() { return String((CFG.data && CFG.data.adv && CFG.data.adv.relayUrl) || 'http://127.0.0.1:3000').replace(/\/+$/, ''); },
+  /* 把任意远程图片地址包装成「经本机中转拉取」的地址。
+     图片 CDN 普遍不带 CORS 头，浏览器直连读不到像素（缩略图能显示、但 canvas 拿不到），
+     走中转即可拿到干净字节。中转的通用转发用 ?__up=<origin> 指定上游，故 __up 必须放最后 */
+  relayImageUrl(u) {
+    try {
+      const x = new URL(String(u || ''));
+      if (!/^https?:$/i.test(x.protocol)) return '';
+      const base = this.relayUrl();
+      if (!base) return '';
+      return base + x.pathname + (x.search ? x.search + '&' : '?') + '__up=' + encodeURIComponent(x.origin);
+    } catch (e) { return ''; }
+  },
+  useRelay() { return !!((CFG.data && CFG.data.adv && CFG.data.adv.relay) || this.relayOk === true); },
   async pingRelay(force) {
     const now = Date.now();
     if (!force && this.relayCheckedAt && now - this.relayCheckedAt < 10000) return this.relayOk;
@@ -2657,18 +2670,34 @@ const API = {
     walk(j, 0);
     return [...new Set(out)];
   },
-  /* 远端 → dataURL（解决 canvas 跨域污染） */
-  async toDataUrl(u) {
+  /* 远端 → dataURL（解决 canvas 跨域污染）
+     顺序：直连 → 本机中转 → 放弃（返回原地址）。
+     很多图片 CDN 不带 CORS 头，直连必然失败，中转是唯一的出路 */
+  async toDataUrl(u, opts) {
     if (!u) return '';
     if (u.startsWith('data:')) return u;
-    try {
-      const r = await fetch(u, { mode: 'cors' });
+    const silent = !!(opts && opts.silent);
+    const toLocal = async (url) => {
+      const r = await fetch(url, { mode: 'cors' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const b = await r.blob();
+      if (!b || !b.size) throw new Error('返回内容为空');
       return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); });
-    } catch (e) {
-      LOG.warn('图片未能转为本地 DataURL（跨域），后处理可能受限：' + e.message);
-      UI.toast('图片获取成功，但跨域导致无法本地后处理。建议开启本地中转。', 'warn', 5000);
+    };
+    try { return await toLocal(u); }
+    catch (e1) {
+      const via = /^https?:/i.test(u) ? this.relayImageUrl(u) : '';
+      if (via) {
+        try {
+          const out = await toLocal(via);
+          LOG.info('远程图片经本地中转转成本地图（原站不带 CORS 头）');
+          return out;
+        } catch (e2) { LOG.warn('经中转获取图片失败：' + e2.message); }
+      }
+      LOG.warn('图片未能转为本地 DataURL（跨域），后处理会受限：' + e1.message);
+      if (!silent) {
+        UI.toast('这张图来自外部网址且不允许跨源读取，本地后处理会失败。请先启动本地中转（E:\\ai-image-relay\\start-relay.bat）再重试。', 'warn', 8000);
+      }
       return u;
     }
   },
@@ -2695,15 +2724,44 @@ const API = {
 --------------------------------------------------------------- */
 const IMG = {
   cache: {},
-  load(src) {
-    if (this.cache[src]) return Promise.resolve(this.cache[src]);
+  tainted: {},          // 只能普通加载、像素读不出来的图（导出会失败，用于提前拦截）
+  /* 纯加载，crossOrigin 只在该设的时候设 */
+  _loadImg(src, cross) {
     return new Promise((res, rej) => {
       const im = new Image();
-      im.crossOrigin = 'anonymous';
-      im.onload = () => { this.cache[src] = im; res(im); };
+      if (cross) im.crossOrigin = 'anonymous';
+      im.onload = () => res(im);
       im.onerror = () => rej(new Error('图片加载失败'));
       im.src = src;
     });
+  },
+  /* 加载策略（顺序很重要）：
+     ① data:/blob: —— 本就是同源资源，设 crossOrigin 只会平白引入 CORS 判定，必须不设
+     ② 远程图 —— 先尽力转成本地图（直连 → 本机中转），拿到干净像素，后续 canvas 才用得了
+     ③ 转不了 —— 先按 CORS 试，失败再退回普通加载：至少让预览能看见图，并记下「像素不可读」 */
+  async load(src) {
+    const s = String(src || '').trim();
+    if (!s) throw new Error('图片地址为空');
+    if (this.cache[s]) return this.cache[s];
+    const keep = im => { this.cache[s] = im; return im; };
+
+    if (!/^https?:/i.test(s)) return keep(await this._loadImg(s, false));
+
+    const local = await API.toDataUrl(s, { silent: true });
+    if (local && local !== s) return keep(await this._loadImg(local, false));
+
+    try { return keep(await this._loadImg(s, true)); }
+    catch (e1) {
+      try {
+        const im = await this._loadImg(s, false);
+        this.tainted[s] = 1;
+        LOG.warn('该远程图只能普通加载、像素不可读，导出会失败：' + s.slice(0, 90));
+        return keep(im);
+      } catch (e2) {
+        LOG.error('图片加载失败（两次尝试均失败）：' + s.slice(0, 120));
+        throw new Error('图片加载失败：地址不可访问、链接已过期，或被网络/跨域策略拦截');
+      }
+    }
   },
   async toCanvas(src, w, h) {
     const im = await this.load(src);
@@ -2875,12 +2933,23 @@ const IMG = {
     }
   },
   async process(srcUrl, cfg) {
+    const key = String(srcUrl || '').trim();
     let cv = await this.toCanvas(srcUrl);
+    // 像素不可读的图（跨域且中转不可用）：加噪/裁切/导出任意一步都会抛浏览器黑话，
+    // 这里提前拦下，给出能照着做的提示
+    if (this.tainted[key]) {
+      throw new Error('这张图来自外部网址且不允许跨源读取，浏览器拿不到像素。请启动本地中转后重试，或先把图片下载到本地再上传');
+    }
     if (cfg.overlaySrc) cv = await this.overlay(cv, cfg.overlaySrc, cfg.overlayOpacity);
     if (cfg.noiseOn) this.noise(cv, cfg.noiseType, cfg.noiseStrength);
     if (cfg.rotOn && cfg.rot) cv = this.rotate(cv, cfg.rot);
     if (cfg.cropOn) cv = this.crop(cv, cfg.crop);
-    let data = cv.toDataURL('image/jpeg', 0.94);
+    let data;
+    try { data = cv.toDataURL('image/jpeg', 0.94); }
+    catch (e) {
+      // 跨域图被普通加载后 canvas 会被污染，toDataURL 必然抛 SecurityError
+      throw new Error('这张图来自外部网址且不允许跨源读取，浏览器拿不到像素。请启动本地中转后重试，或先把图片下载到本地再上传');
+    }
     if (cfg.metaOn) data = await this.writeExif(data, cfg.meta);
     return data;
   }
@@ -3289,25 +3358,40 @@ const EXP = {
       cv.width = Math.round(im.naturalWidth * s); cv.height = Math.round(im.naturalHeight * s);
       cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
       $('#exProg').textContent = '';
-    } catch (e) { $('#exProg').textContent = '预览失败：' + e.message; }
+    } catch (e) {
+      const msg = String(e.message || '未知错误');
+      $('#exProg').textContent = '预览失败：' + msg;
+      LOG.error('导出预览失败：' + msg);
+      // 把失败原因直接画到画布上：否则画布还停留在上一次的画面/空态，看着像"没选图"
+      cv.width = 640; cv.height = 360;
+      const c = cv.getContext('2d');
+      c.fillStyle = '#fff6f5'; c.fillRect(0, 0, 640, 360);
+      c.fillStyle = '#c0392b'; c.font = 'bold 15px sans-serif';
+      c.fillText('预览失败', 24, 138);
+      c.font = '14px sans-serif'; c.fillStyle = '#8a4740';
+      const lines = [];
+      for (let i = 0; i < msg.length; i += 32) lines.push(msg.slice(i, i + 32));
+      lines.slice(0, 5).forEach((t, i) => c.fillText(t, 24, 170 + i * 24));
+    }
   },
   async exportAll() {
     const list = S.imgs.exInput;
     if (!list.length) { UI.toast('请先选择或上传需要处理的图片', 'err'); return; }
     if (!$('#exMetaOn').checked && $('.extab:not(.hidden)') && $('#ex-t-meta').classList.contains('hidden')) { }
     $('#exProg').innerHTML = '<span class="spin"></span> 导出中…';
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0, firstErr = '';
     for (let i = 0; i < list.length; i++) {
       try {
         $('#exProg').innerHTML = `<span class="spin"></span> 正在处理 ${i + 1}/${list.length}`;
         const data = await IMG.process(list[i].url, this.cfg());
         downloadDataUrl(data, `导出-${String(i + 1).padStart(2, '0')}.jpg`);
         ok++; await sleep(220);
-      } catch (e) { fail++; LOG.error('导出失败：' + e.message); }
+      } catch (e) { fail++; if (!firstErr) firstErr = String(e.message || e); LOG.error('导出失败：' + e.message); }
     }
     $('#exProg').textContent = `导出完成 · 成功 ${ok}${fail ? ' · 失败 ' + fail : ''}`;
     LOG.info(`图片导出完成 成功${ok} 失败${fail}`);
-    UI.toast(`导出完成，成功 ${ok} 张${fail ? '，失败 ' + fail + ' 张' : ''}`, ok ? 'ok' : 'err');
+    if (fail && firstErr) UI.toast(`导出完成：成功 ${ok} 张、失败 ${fail} 张。失败原因：${firstErr}`, ok ? 'warn' : 'err', 10000);
+    else UI.toast(`导出完成，成功 ${ok} 张`, 'ok');
   }
 };
 /* ---------------------------------------------------------------
