@@ -80,6 +80,20 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 
 /* ============ Layout ============ */
 .app{height:100%;display:flex;flex-direction:column}
+/* 顶部提示条：公网页面被 Chrome 拦住了对本机服务的访问（不是中转没启动） */
+.lna-bar{display:none;flex:0 0 auto;align-items:flex-start;gap:10px;
+  padding:11px 14px;background:var(--warning-soft);border-bottom:1px solid #f0c98a;
+  color:var(--warning);font-size:12.5px;line-height:1.6}
+.lna-bar.on{display:flex}
+.lna-bar .lna-ico{flex:0 0 auto;font-size:15px;line-height:1.35}
+.lna-bar .lna-txt{flex:1;min-width:0}
+.lna-bar b{font-weight:700}
+.lna-bar code{background:#fff6e8;border:1px solid #f0d8b0;border-radius:4px;padding:1px 5px;font-size:12px}
+.lna-bar a{color:var(--warning);font-weight:700;text-decoration:underline;word-break:break-all}
+.lna-bar .btn-go{display:inline-block;margin-top:6px;padding:5px 12px;border-radius:var(--r-sm);
+  background:var(--warning);color:#fff;font-weight:600;text-decoration:none;font-size:12.5px}
+.lna-bar .lna-x{flex:0 0 auto;border:0;background:transparent;color:#b07c3e;cursor:pointer;font-size:17px;line-height:1;padding:2px 5px;border-radius:4px}
+.lna-bar .lna-x:hover{background:#f6e3c8}
 .body{flex:1;display:flex;min-height:0}
 .rail{
   width:var(--rail);flex:0 0 var(--rail);background:var(--bg-surface);
@@ -403,6 +417,18 @@ html[data-theme="dark"] .step.done{border-color:#2b5c46}
 </head>
 <body>
 <div class="app">
+  <!-- 公网页面被 Chrome 拦住访问本机服务时的提示条 -->
+  <div class="lna-bar" id="lnaBar">
+    <span class="lna-ico">⚠️</span>
+    <div class="lna-txt">
+      <b>浏览器拦住了本应用访问本机服务。</b><br>
+      你现在的页面地址是 <code id="lnaOrigin">—</code>（公网地址）。Chrome 138 版起要求用户授权、153 版起默认拒绝公网页面访问本机 <code>127.0.0.1</code>，光靠响应头绕不过去，所以接口和图片都拿不到。<br>
+      <b>改用本机地址打开即可彻底解决</b>（本机→本机不受此限制，且与接口同源，连 CORS 都不需要）：
+      <a id="lnaLink" href="http://127.0.0.1:3000/ai-image.html">http://127.0.0.1:3000/ai-image.html</a>
+      <div><a class="btn-go" id="lnaBtn" href="http://127.0.0.1:3000/ai-image.html">→ 用本机地址打开</a></div>
+    </div>
+    <button class="lna-x" title="暂时隐藏" onclick="UI.hideLnaBar()">✕</button>
+  </div>
   <!-- ================= TOPBAR ================= -->
   <header class="topbar">
     <div class="brand">
@@ -1522,6 +1548,18 @@ const UI = {
     $('#toasts').appendChild(t);
     setTimeout(() => { t.style.transition = '.3s'; t.style.opacity = '0'; t.style.transform = 'translateY(6px)'; setTimeout(() => t.remove(), 320); }, ms || 3200);
   },
+  /* 只在「公网页面 + 连不上本机服务」时出现：这不是没启动，是被浏览器拦了 */
+  showLnaBar(on) {
+    const bar = $('#lnaBar'); if (!bar) return;
+    if (!on) { bar.classList.remove('on'); return; }
+    const origin = $('#lnaOrigin'), link = $('#lnaLink'), btn = $('#lnaBtn');
+    const entry = API.localEntry();
+    if (origin) origin.textContent = location.origin;
+    if (link) { link.textContent = entry; link.href = entry; }
+    if (btn) btn.href = entry;
+    bar.classList.add('on');
+  },
+  hideLnaBar() { const bar = $('#lnaBar'); if (bar) bar.classList.remove('on'); },
   confirmRun(msg) { return confirm(msg); }
 };
 /* ---------------------------------------------------------------
@@ -1952,15 +1990,20 @@ const CFG = {
   renderRelayStat() {
     const el = $('#relayStat'); if (!el) return;
     const u = API.relayUrl();
-    if (API.relayOk === true) el.innerHTML = `<span class="badge ok">已连接</span> ${esc(u)}${API.relayInfo && API.relayInfo.upstream ? ' → ' + esc(API.relayInfo.upstream) : ''}`;
-    else if (API.relayOk === false) el.innerHTML = `<span class="badge err">未连接</span> ${esc(u)}（直连国内接口会被 CORS 拦截）`;
+    if (API.relayOk === true) el.innerHTML = `<span class="badge ok">已连接</span> ${esc(u)}${API.relayInfo && API.relayInfo.upstream ? ' → ' + esc(API.relayInfo.upstream) : ''}${API.pageIsLocal() ? '' : ' <span style="color:var(--warning)">（本页是公网地址，Chrome 可能随时拦截，建议改用本机地址打开）</span>'}`;
+    else if (API.relayOk === false && API.relayBlocked) el.innerHTML = `<span class="badge err">被浏览器拦截</span> 本页来源 <code class="mono">${esc(location.origin)}</code> 是公网地址，Chrome 拒绝其访问本机 127.0.0.1。<br>请改用本机地址打开：<a href="${esc(API.localEntry())}" target="_blank" style="color:var(--warning);font-weight:600">${esc(API.localEntry())}</a>`;
+    else if (API.relayOk === false) el.innerHTML = `<span class="badge err">未连接</span> ${esc(u)}（服务没运行，双击 E:\\ai-image-relay\\start-relay.bat）`;
     else el.innerHTML = '<span class="spin"></span> 检测中…';
   },
   async checkRelay(manual) {
     const el = $('#relayStat'); if (el) el.innerHTML = '<span class="spin"></span> 检测中…';
     await API.pingRelay(true);
     this.renderRelayStat();
-    if (manual) UI.toast(API.relayOk ? '本地中转已连接 🦞' : '未检测到本地中转：请先双击 E:\\ai-image-relay\\start-relay.bat', API.relayOk ? 'ok' : 'warn', 5000);
+    if (manual) {
+      if (API.relayOk) UI.toast('本地服务已连接 🦞', 'ok', 4000);
+      else if (API.relayBlocked) UI.toast('浏览器拦截了本页面对本机服务的访问：Chrome 不允许公网页面访问 127.0.0.1。请改用本机地址打开：' + API.localEntry(), 'err', 10000);
+      else UI.toast('本地服务没运行：请先双击 E:\\ai-image-relay\\start-relay.bat', 'warn', 6000);
+    }
     return API.relayOk;
   },
   async selfTest() {
@@ -2421,7 +2464,7 @@ const API = {
      背景：火山方舟等国内接口的 POST 响应不带 Access-Control-Allow-Origin，
      浏览器直连必然 Failed to fetch，只能经本机中转转发。
      这里启动时自动探活，探到就自动使用，不需要用户手动开开关。 */
-  relayOk: null, relayInfo: null, relayCheckedAt: 0,
+  relayOk: null, relayInfo: null, relayCheckedAt: 0, relayBlocked: false,
   /* CFG.data 在 boot() 完成前为 null，这里必须做存在性判断 */
   relayUrl() { return String((CFG.data && CFG.data.adv && CFG.data.adv.relayUrl) || 'http://127.0.0.1:3000').replace(/\/+$/, ''); },
   /* 把任意远程图片地址包装成「经本机中转拉取」的地址。
@@ -2437,6 +2480,16 @@ const API = {
     } catch (e) { return ''; }
   },
   useRelay() { return !!((CFG.data && CFG.data.adv && CFG.data.adv.relay) || this.relayOk === true); },
+  /* 当前页面本身是不是「本机地址」。
+     这一条决定了 Chrome 会不会拦：公网页面(https://xxx.github.io)访问 127.0.0.1，
+     Chrome 138+ 要用户授权「本地网络访问」，153 起默认直接拒绝且无法用响应头绕过。
+     页面本身跑在 127.0.0.1 上时，本机→本机不触发该检查，一切正常。 */
+  pageIsLocal() {
+    const h = location.hostname;
+    return h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]';
+  },
+  /* 出问题时该去哪：本机服务同时也托管着本应用页面 */
+  localEntry() { return this.relayUrl() + '/ai-image.html'; },
   async pingRelay(force) {
     const now = Date.now();
     if (!force && this.relayCheckedAt && now - this.relayCheckedAt < 10000) return this.relayOk;
@@ -2452,7 +2505,13 @@ const API = {
       else LOG.warn(`中转地址有响应但格式不对（HTTP ${r.status}）：${this.relayUrl()}`);
     } catch (e) {
       this.relayOk = false; this.relayInfo = null;
-      LOG.warn(`未检测到本地中转（${this.relayUrl()}）：${e.message}`);
+      // 公网页面 + 连不上本机服务 = 极可能是被 Chrome 的本地网络访问权限拦了，
+      // 而不是中转没启动。两者现象一样（都是 Failed to fetch），但修法完全不同。
+      this.relayBlocked = !this.pageIsLocal();
+      LOG.warn(this.relayBlocked
+        ? `连接本机服务被浏览器拦截：本页来源 ${location.origin} 是公网地址，Chrome 会拦下访问 127.0.0.1 的请求。请改用本机地址打开：${this.localEntry()}`
+        : `未检测到本地中转（${this.relayUrl()}）：${e.message}`);
+      UI.showLnaBar(this.relayBlocked);
     } finally { clearTimeout(timer); }
     return this.relayOk;
   },
@@ -2491,12 +2550,16 @@ const API = {
     } catch (e) {
       if (e.name === 'AbortError') throw new Error(ac.signal.reason && ac.signal.reason.message ? ac.signal.reason.message : '请求已取消');
       if (/Failed to fetch|NetworkError|Load failed/i.test(e.message)) {
-        const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(url);
-        const err = new Error(isLocal
-          ? `本地中转不可用：${url}`
-          : `浏览器直连被跨域拦截：${url}`);
-        err.network = isLocal ? 'relay-down' : 'cors';
+        const toLoopback = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(url);
+        // 三种情况现象一样（都是 Failed to fetch），但修法完全不同，必须分开
+        let net;
+        if (toLoopback && !this.pageIsLocal()) net = 'lna';        // 公网页→本机：Chrome 权限拦截
+        else if (toLoopback) net = 'relay-down';                    // 本机页→本机：服务真的没起
+        else net = 'cors';                                          // 直连外部接口被跨域拦
+        const err = new Error(`网络请求失败（${net}）：${url}`);
+        err.network = net;
         err.url = url;
+        if (net === 'lna') this.relayBlocked = true;
         throw err;
       }
       throw e;
@@ -2507,8 +2570,9 @@ const API = {
     const m = String((e && e.message) || e || '未知错误');
     const s = (e && e.status) || 0;
     const has = re => re.test(m);
-    if (e && e.network === 'relay-down') return `本地中转没有运行：双击 E:\\ai-image-relay\\start-relay.bat 启动（窗口保持开着），再点生成即可`;
-    if (e && e.network === 'cors') return '浏览器直连被跨域拦截：该接口不返回 CORS 头，浏览器无法直连。启动本地中转（双击 E:\\ai-image-relay\\start-relay.bat）后本应用会自动识别并走中转';
+    if (e && e.network === 'lna') return `浏览器拦住了本应用访问本机服务：当前页面来源是 ${location.origin}（公网地址），Chrome 从 138 版起要求用户授权、153 版起默认拒绝公网页面访问本机 127.0.0.1，响应头无法绕过。请改用本机地址打开：${this.localEntry()}（本地服务需在运行，双击 E:\\ai-image-relay\\start-relay.bat）`;
+    if (e && e.network === 'relay-down') return `本地服务没有运行：双击 E:\\ai-image-relay\\start-relay.bat 启动（窗口保持开着），再重试`;
+    if (e && e.network === 'cors') return '浏览器直连被跨域拦截：该接口不返回 CORS 头，浏览器无法直连。启动本地服务（双击 E:\\ai-image-relay\\start-relay.bat）后本应用会自动识别并走本机转发';
     if (has(/未开通|ModelNotOpen|not activated|not open/i)) return '模型未开通：请前往对应控制台开通该模型服务后再试（开通后等 2–3 分钟）';
     if (has(/InvalidEndpointOrModel|does not exist|model[_ -]?not[_ -]?found|模型.{0,12}(不存在|不可用|不支持)/i)) return '模型不存在或未开通：检查模型 ID 是否带日期后缀，以及账号是否已开通该模型';
     if (s === 401 || has(/invalid.{0,4}api.{0,4}key|unauthor|密钥无效|access key/i)) return 'API 密钥无效：检查 Key 是否填对、有无多余空格，确认与 API 地址属于同一平台';
