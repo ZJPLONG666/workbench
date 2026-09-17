@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小红书封面提示词生成器 · 反推 / 裂变 / 出图</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --line:#e3e3df; --text:#1c1c1a;
+  --muted:#6b6b66; --accent:#c2410c; --accent-soft:#fff2e9; --ok:#2f6d3f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.6;padding:24px}
+.wrap{max-width:1120px;margin:0 auto}
+h1{font-size:19px;font-weight:600;margin-bottom:4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:0}
+.tab{padding:9px 18px;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;color:var(--muted);background:transparent}
+.tab.on{background:var(--card);border-color:var(--line);color:var(--accent);font-weight:500;margin-bottom:-1px}
+.pane{display:none}
+.pane.on{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+.card h2{font-size:14px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.field{margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:#fff}
+textarea{resize:vertical;line-height:1.7}
+textarea:focus,input:focus,select:focus{outline:none;border-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+button{padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+button.ghost{background:var(--accent-soft);border-color:#f6c9ae;color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:hover:not(:disabled){opacity:.88}
+#out{min-height:340px;font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.7}
+.hint b{color:var(--accent);font-weight:500}
+.tag{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:1px 6px;font-size:12px}
+.warn{color:#a32d2d}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted);background:#fcfcfa;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.thumb{width:76px;height:76px;border-radius:8px;overflow:hidden;border:2px solid var(--line);cursor:pointer;position:relative}
+.thumb.on{border-color:var(--accent)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.preview{max-height:280px;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto}
+.status{font-size:12px;padding:8px 12px;border-radius:8px;background:#f1efe8;color:#5f5e5a;margin-top:10px;display:none;white-space:pre-wrap;word-break:break-all}
+.status.on{display:block}
+.status.err{background:#fcebeb;color:#a32d2d}
+.status.ok{background:#eaf3de;color:#2f6d3f}
+.varlist{margin-top:12px;display:grid;gap:10px}
+.varitem{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fcfcfa}
+.varitem .vhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;color:var(--muted)}
+.varitem textarea{min-height:80px;font-size:13px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
+.shot{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fcfcfa}
+.shot img{width:100%;display:block;background:#eee}
+.shot .cap{padding:8px;font-size:11px;color:var(--muted);max-height:56px;overflow:hidden}
+.shot .cap button{width:100%;padding:5px;font-size:12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.chip{padding:5px 12px;border:1px solid var(--line);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;user-select:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.kv{font-size:12px;color:var(--muted);line-height:1.9}
+.probe{font-size:12px;padding:6px 10px;border-radius:6px;background:#f1efe8;margin-bottom:6px;color:#5f5e5a;word-break:break-all}
+.probe.ok{background:#eaf3de;color:#2f6d3f}
+.probe.bad{background:#fcebeb;color:#a32d2d}
+code{background:#f1efe8;padding:1px 5px;border-radius:4px;font-size:12px}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>小红书封面提示词生成器</h1>
+  <div class="sub">填槽生成 · 参考图反推 · 裂变出图 · 批量导出</div>
+
+  <div class="tabs">
+    <div class="tab on" onclick="tab(0)">1 填槽生成</div>
+    <div class="tab" onclick="tab(1)">2 参考图反推 · 裂变</div>
+    <div class="tab" onclick="tab(2)">3 生图 API 设置</div>
+  </div>
+
+  <!-- ========== TAB 1 ========== -->
+  <div class="pane on">
+    <div class="grid">
+      <div class="card">
+        <h2>填槽</h2>
+        <div class="field">
+          <label>1 · 产品描述（品类 + 颜色 + 材质 + 配件）</label>
+          <input id="product" placeholder="蓝色硅胶握力圈，配银色登山扣与粉色编织绳">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>2 · 场景地点</label>
+            <select id="scene">
+              <option>小区花园步道</option><option>地铁站通道</option><option>写字楼电梯口</option>
+              <option>电梯轿厢内</option><option>商场中庭</option><option>城市公交站台（夜）</option>
+              <option>大学校园林荫道</option><option>商业步行街</option><option>社区游乐场旁</option>
+              <option>健身房走廊</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>3 · 广告位形式</label>
+            <select id="board">
+              <option>路边暖光发光灯箱</option><option>墙面竖版灯箱</option><option>巨型竖屏 LED 广告</option>
+              <option>电梯后壁发光广告框</option><option>公告栏哑光海报</option><option>站台夜光灯箱</option>
+              <option>店铺橱窗贴海报</option><option>立柱广告牌</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>4 · 行人（1-2 人，真实感开关）</label>
+            <select id="people">
+              <option>一位牵狗的居民</option><option>两位低头看手机的上班族</option>
+              <option>几位拎购物袋的女生</option><option>几位骑车经过的学生</option>
+              <option>一位推婴儿车的妈妈</option><option>一位拎电脑包的通勤者</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>5 · 广告牌背景配色</label>
+            <select id="color">
+              <option>奶油白与浅紫渐变</option><option>米白与淡草绿</option><option>浅灰与深蓝渐变</option>
+              <option>米白与奶黄</option><option>浅粉与纯白</option><option>浅木色与米白</option>
+              <option>米白与暖橙</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>6 · 材质与光感</label>
+          <select id="material">
+            <option>绒毛纤维清晰可见，柔和顶光打出细密绒感</option>
+            <option>金属件高光锐利，边缘有环境反射</option>
+            <option>哑光表面细腻，边缘柔和过渡光</option>
+            <option>天然纹理清晰，侧光打出纤维走向</option>
+            <option>通透有折射，高光锐利带柔和衰减</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>7 · 环境光</label>
+            <select id="light">
+              <option>蓝调时分天空与暖黄路灯，冷暖对比</option>
+              <option>金色斜射阳光穿过树叶形成斑驳光影</option>
+              <option>柔和漫射晨光，空气通透</option>
+              <option>站台顶棚暖黄路灯，背景虚化车流光斑</option>
+              <option>顶部条形灯带冷白光，金属壁面柔和反光</option>
+              <option>灯箱冷白自发光，玻璃穹顶自然光漫射</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>8 · 镜头参数</label>
+            <select id="lens">
+              <option value="24mm 镜头 f/4 仰拍，屏幕占据主导略有透视张力">24mm 广角 f/4 仰拍</option>
+              <option value="35mm 镜头 f/2.0，平视中景，人物轻微虚化、广告锐利">35mm f/2.0 平视中景</option>
+              <option value="35mm 镜头 f/2.8，中景平视，路人轻微虚化">35mm f/2.8 中景平视</option>
+              <option value="35mm 镜头 f/2.0，平视略仰，人物边缘轻微虚化">35mm f/2.0 平视略仰（小空间）</option>
+              <option value="50mm 镜头 f/1.8，平视中近景，前景深度虚化">50mm f/1.8 中近景</option>
+            </select>
+          </div>
+        </div>
+        <h2 style="margin-top:18px">广告牌文案 <span class="tag">字数红线</span></h2>
+        <div class="field"><label>大标题 <span class="warn">≤12 字</span></label><input id="t1" placeholder="等公交的3分钟，够捏100下"></div>
+        <div class="field"><label>副标题 <span class="warn">≤16 字</span></label><input id="t2" placeholder="入门握力圈，随手一捏就开练"></div>
+        <div class="row3">
+          <div class="field"><label>卖点 1 ≤8字</label><input id="s1" placeholder="天然香茅草"></div>
+          <div class="field"><label>卖点 2 ≤8字</label><input id="s2" placeholder="微烟不呛鼻"></div>
+          <div class="field"><label>卖点 3 ≤8字</label><input id="s3" placeholder="户外也能点"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>标题字色</label><select id="fontcolor"><option>深棕</option><option>深绿</option><option>深紫</option><option>白色</option><option>黑色</option><option>深蓝</option></select></div>
+          <div class="field"><label>风格词</label><select id="style"><option>都市生活纪实摄影</option><option>真实街拍抓拍感</option><option>青春校园纪实摄影，温暖治愈</option><option>都市夜景纪实摄影，冷暖对比强烈</option><option>都市商业摄影质感</option></select></div>
+        </div>
+        <div class="btns">
+          <button class="primary" onclick="gen()">生成提示词</button>
+          <button class="ghost" onclick="demo()">填示例</button>
+          <button onclick="clearAll()">清空</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>输出</h2>
+        <textarea id="out" placeholder="点「生成提示词」后这里会出现完整提示词，可直接复制粘贴"></textarea>
+        <div class="btns">
+          <button class="primary" onclick="copy()">复制提示词</button>
+          <button onclick="copyNeg()">复制负面词</button>
+        </div>
+        <div class="hint">
+          <b>用法</b>：粘进即梦 / 豆包，比例选 3:4，一次出 4 张挑。<br>
+          <b>出图后两道关</b>：① 缩到 200px 宽看大标题是否还能读清；② 错字用局部重绘只圈标题块重出，别整图重来。<br>
+          <b>红线</b>：大标题 ≤12 字、副标题 ≤16 字、卖点卡各 ≤8 字，超了 AI 必出乱码。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 2 ========== -->
+  <div class="pane">
+    <div class="grid">
+      <div class="card">
+        <h2>① 导入目标图片</h2>
+        <div class="drop" id="drop" onclick="document.getElementById('file').click()">
+          点击选择，或把图片拖进来<br><span style="font-size:12px">支持 jpg / png / webp，可多张</span>
+        </div>
+        <input type="file" id="file" accept="image/*" multiple style="display:none">
+        <div class="thumbs" id="thumbs"></div>
+        <div class="btns" style="margin-top:10px">
+          <button class="ghost" onclick="reverseCurrent()">反推当前图</button>
+          <button onclick="reverseAll()">批量反推全部</button>
+          <button onclick="clearImgs()">清空图片</button>
+        </div>
+        <div class="status" id="st2"></div>
+        <div class="hint">
+          导入后会自动对第一张图反推提示词。反推结果必须覆盖：<b>主体 · 构图 · 场景 · 光线 · 材质 · 色彩 · 氛围 · 风格</b>，纯中文输出，无标题无解释无英文。
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>② 反推结果（可编辑）</h2>
+        <img id="preview" class="preview" style="display:none">
+        <textarea id="revOut" style="min-height:220px;margin-top:10px" placeholder="导入图片后，这里会自动生成反推提示词"></textarea>
+        <div class="btns">
+          <button class="primary" onclick="copyRev()">复制反推结果</button>
+          <button onclick="toFission()">送入裂变</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>③ 裂变生成</h2>
+      <div class="field">
+        <label>裂变维度（可多选，每次只改这些维度，主体保持不变）</label>
+        <div class="chips" id="dims">
+          <div class="chip on" data-d="场景">场景</div>
+          <div class="chip on" data-d="构图">构图</div>
+          <div class="chip" data-d="光线">光线</div>
+          <div class="chip" data-d="色彩">色彩</div>
+          <div class="chip" data-d="材质细节">材质细节</div>
+          <div class="chip" data-d="氛围">氛围</div>
+          <div class="chip" data-d="镜头焦段">镜头焦段</div>
+          <div class="chip" data-d="风格">风格</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>裂变数量</label>
+          <select id="fcount">
+            <option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>20</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>附加要求（可选，会附加到每条变体）</label>
+          <input id="fextra" placeholder="例：保持竖版 3:4，顶部留白给标题">
+        </div>
+      </div>
+      <div class="btns">
+        <button class="primary" onclick="fission()">开始裂变</button>
+        <button onclick="exportTxt()">导出 TXT</button>
+        <button onclick="exportCsv()">导出 CSV</button>
+        <button onclick="copyAll()">复制全部</button>
+      </div>
+      <div class="varlist" id="varlist"></div>
+    </div>
+
+    <div class="card">
+      <h2>④ 生成图片与导出</h2>
+      <div class="row">
+        <div class="field">
+          <label>出图尺寸</label>
+          <select id="isize">
+            <option value="1920x2560">1920×2560 竖版 3:4（2K · 推荐）</option>
+            <option value="2048x2048">2048×2048 方图（2K）</option>
+            <option value="2560x1920">2560×1920 横版（2K）</option>
+            <option value="1024x1536">1024×1536 竖版（1K · Seedream 4.0+ 会报 size 错误）</option>
+            <option value="1024x1024">1024×1024 方图（1K · 部分模型不支持）</option>
+          </select>
+          <div class="hint" style="margin-top:4px">
+            Seedream 4.0 及以上要求画面至少约 <b>368 万像素</b>，所以默认给了 2K 档。做小红书封面选第一项 1920×2560（正好 3:4）。
+          </div>
+        </div>
+        <div class="field">
+          <label>每张生成张数</label>
+          <select id="in"><option>1</option><option selected>2</option><option>4</option></select>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="primary" onclick="genImages()">按变体生成图片</button>
+        <button onclick="downloadAll()">下载全部图片</button>
+        <button class="ghost" onclick="tab(2)">先去配 API</button>
+      </div>
+      <div class="status" id="st4"></div>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 3 ========== -->
+  <div class="pane">
+    <div class="grid">
+      <div class="card">
+        <h2>多模态大模型（用于反推与裂变）</h2>
+        <div class="field">
+          <label>服务商预设</label>
+          <select id="preset" onchange="applyPreset()">
+            <option value="">自定义</option>
+            <option value="openai">OpenAI</option>
+            <option value="ark">火山方舟（豆包 Seedream）★推荐</option>
+            <option value="qwen">通义千问 DashScope</option>
+            <option value="zhipu">智谱 GLM</option>
+            <option value="kimi">Moonshot Kimi</option>
+          </select>
+        </div>
+        <div class="field"><label>接口地址 Base URL</label><input id="llmBase" placeholder="https://api.openai.com/v1">
+          <div class="hint" style="margin-top:4px">火山方舟固定填：<code>https://ark.cn-beijing.volces.com/api/v3</code></div>
+        </div>
+        <div class="field"><label>请求路径</label><input id="llmPath" value="/chat/completions"></div>
+        <div class="field"><label>API Key</label><input id="llmKey" type="password" placeholder="sk-..."></div>
+        <div class="field"><label>视觉模型名称（须支持读图）</label><input id="llmModel" placeholder="gpt-4o / doubao-vision-pro-32k / qwen-vl-max"></div>
+        <div class="btns"><button class="primary" onclick="testLLM()">测试连接</button></div>
+        <div class="status" id="stA"></div>
+      </div>
+
+      <div class="card">
+        <h2>生图模型（用于出图导出）</h2>
+        <div class="field"><label>接口地址 Base URL</label><input id="imgBase" placeholder="https://api.openai.com/v1">
+          <div class="hint" style="margin-top:4px">火山方舟固定填：<code>https://ark.cn-beijing.volces.com/api/v3</code></div>
+        </div>
+        <div class="field"><label>请求路径</label><input id="imgPath" value="/images/generations"></div>
+        <div class="field"><label>API Key</label><input id="imgKey" type="password" placeholder="sk-..."></div>
+        <div class="field"><label>生图模型名称 <span class="warn">必填，不能空</span></label><input id="imgModel" placeholder="doubao-seedream-3-0-t2i / gpt-image-1 / qwen-image"></div>
+        <div class="field">
+          <label>响应格式</label>
+          <select id="imgFmt">
+            <option value="auto">自动（推荐，不传该参数，最兼容）</option>
+            <option value="url">URL</option>
+            <option value="b64_json">b64_json</option>
+          </select>
+        </div>
+        <div class="btns">
+          <button class="primary" onclick="saveCfg()">保存配置</button>
+          <button onclick="testImg()">测试生图</button>
+          <button onclick="exportCfg()">导出配置</button>
+          <button onclick="copyCfg()">复制配置</button>
+          <button onclick="clearCfg()">清除</button>
+        </div>
+        <div class="hint" style="margin-top:12px">
+          <b>常见报错对照</b><br>
+          <b>404</b>：请求到达了服务器，但模型名是空的或不存在 → 检查「生图模型名称」<br>
+          <b>401</b>：Key 错了、过期或复制带了空格 → 重新粘贴<br>
+          <b>403</b>：无权限，OpenAI 的 gpt-image-1 需要先完成组织验证<br>
+          <b>429</b>：余额不足或请求太频繁<br>
+          <b>Failed to fetch</b>：网络不通或被 CORS 拦截 → 用下面的本地中转<br>
+          <b>400 + response_format</b>：该模型不支持此参数 → 响应格式改成「自动」
+        </div>
+        <div class="status" id="stB"></div>
+        <div class="hint">
+          <b>跨域说明</b>：浏览器直连部分国内接口会被 CORS 拦截。解决办法是填你自己的中转/代理地址（如本地 http://127.0.0.1:3000/v1）。<br>
+          <b>密钥</b>：保存在本机浏览器 localStorage，不会上传到任何第三方，但共用电脑请勿保存。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>豆包（火山方舟）去哪找 · 三步走</h2>
+      <div class="kv">
+        <b>第 1 步 · 进控制台</b><br>
+        <a href="https://console.volcengine.com/ark" target="_blank" rel="noopener">console.volcengine.com/ark</a>
+        （左侧菜单「火山方舟」→ 需先手机号注册 + 实名认证）<br><br>
+
+        <b>第 2 步 · 拿 API Key</b><br>
+        左侧菜单「API Key 管理」→ 创建新密钥 → 立即复制保存（只展示一次）<br>
+        直达：<a href="https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey" target="_blank" rel="noopener">API Key 管理页</a><br><br>
+
+        <b>第 3 步 · 开通模型 + 复制模型 ID</b><br>
+        左侧菜单「开通管理」→ 搜索 Doubao-Seedream（文生图）与 Doubao-Seed-1.6-Vision（读图）→ 点「开通」<br>
+        开通后在同一页复制<b>完整模型 ID</b>（形如 doubao-seedream-5-0-260128，必须带日期后缀）<br><br>
+
+        <b>接口地址是固定的，不用查：</b><br>
+        <code>https://ark.cn-beijing.volces.com/api/v3</code><br>
+        请求路径：读图用 <code>/chat/completions</code>，出图用 <code>/images/generations</code><br><br>
+
+        <b>常见模型 ID 参考（2026-09）</b><br>
+        文生图：<code>doubao-seedream-5-0-260128</code>（旗舰）/ <code>doubao-seedream-5-0-lite-260128</code>（便宜）/ <code>doubao-seedream-4-5-251128</code><br>
+        读图：<code>doubao-seed-2-0-lite-260428</code>（推荐）/ <code>doubao-seed-2-0-pro-260215</code> / <code>doubao-seed-2-0-mini-260428</code><br>
+        <span class="warn">已下线，填了必报 NotFound</span>：<code>doubao-seed-1-6-vision-250815</code>、<code>doubao-seedance-1-5-pro-251215</code><br><br>
+        <span class="warn">注意</span>：火山方舟不是「有 Key 就能调所有模型」，每个模型要单独开通。没开通报 <code>ModelNotOpen</code>，模型不存在报 <code>InvalidEndpointOrModel.NotFound</code>，两者都长得像 404，但处理方式不同。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>模型可用性探测（找不到可用模型时用这个）</h2>
+      <div class="hint" style="margin-top:0">
+        逐个测试候选模型 ID，直接告诉你哪个能用、哪个没开通。读图探测不花钱；出图探测会真实生成图片（约几分钱一张）。
+      </div>
+      <div class="btns">
+        <button class="primary" onclick="probeChat()">探测读图模型</button>
+        <button class="primary" onclick="probeImg()">探测出图模型</button>
+      </div>
+      <div style="margin-top:12px" id="probeOut"></div>
+      <div class="status" id="stC"></div>
+    </div>
+
+    <div class="card">
+      <h2>反推提示词的固定要求</h2>
+      <div class="kv">
+        系统内置了统一的反推指令，输出必须满足：<br>
+        · 完整描述图中的<b>主体</b>、<b>构图</b>、<b>场景</b>、<b>光线</b>、<b>材质</b>、<b>色彩</b>、<b>氛围</b>、<b>风格</b><br>
+        · 纯中文，一段式自然语言，可直接粘进生图工具<br>
+        · 不要前言解释、不要标题、不要分点、不要小标题、不要任何英文<br>
+        · 长度控制在 300-500 字
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NEG = "不要多余文字，不要杂乱排版，不要扭曲的人脸和手指，不要多余肢体，不要变形的产品，不要重复的产品元素，不要模糊不清，不要低分辨率，不要过度磨皮，不要电商白底图风格，不要塑料廉价感，不要传单排版感，不要倾斜的地平线，不要裁切不完整，不要水印";
+
+const REV_RULE = "你是图像提示词反推专家。请仔细分析这张图片，输出一段可直接用于 AI 生图工具的中文提示词。\n" +
+"必须完整覆盖以下八个要素：主体、构图、场景、光线、材质、色彩、氛围、风格。\n" +
+"严格约束：\n" +
+"1. 只输出提示词正文，一段式自然语言，不要分段编号；\n" +
+"2. 不要任何前言、解释、说明、总结；\n" +
+"3. 不要标题、不要小标题、不要字段名、不要冒号前缀；\n" +
+"4. 不要出现任何英文单词（镜头参数如 85mm、f/1.8 这类数字符号除外）；\n" +
+"5. 不要引号包裹，不要 markdown 符号；\n" +
+"6. 长度 300 到 500 字，信息密度要高，能让人照着复现这张图。";
+
+let imgs = [];        // {name, data, rev}
+let curIdx = -1;
+let variants = [];    // {text, shots:[]}
+let shots = [];       // {url, name}
+
+/* ---------- tab ---------- */
+function tab(i){
+  document.querySelectorAll('.tab').forEach((t,k)=>t.classList.toggle('on',k===i));
+  document.querySelectorAll('.pane').forEach((p,k)=>p.classList.toggle('on',k===i));
+}
+
+/* ---------- 填槽生成 ---------- */
+function v(id){ return document.getElementById(id).value.trim(); }
+function gen(){
+  const p=v('product')||'【产品描述】', t1=v('t1')||'【大标题】', t2=v('t2')||'【副标题】';
+  const s1=v('s1')||'卖点一', s2=v('s2')||'卖点二', s3=v('s3')||'卖点三';
+  const side = document.getElementById('people').value.indexOf('几位')>=0 ? '前' : '右';
+  document.getElementById('out').value = `一张竖版 3:4 照片，${v('scene')}，${v('people')}从画面${side}侧走过，带轻微运动模糊，
+${v('board')}占据画面约七成，广告内容：
+${v('color')}干净背景，左侧悬浮产品特写——${p}，
+${v('material')}，产品打光柔和有立体感，
+右侧大号${v('fontcolor')}粗体标题「${t1}」，
+下方一行小字副标题「${t2}」，
+底部三个白色圆角卖点卡片，简约线条图标加一行小字，分别是「${s1}」「${s2}」「${s3}」，
+${v('light')}，
+${v('lens')}，
+${v('style')}，真实抓拍感，自然景深，照片级真实感，8k 高清`;
+}
+function copy(){ const el=document.getElementById('out'); if(!el.value) gen(); el.select(); document.execCommand('copy'); flash(); }
+function copyNeg(){ const el=document.getElementById('out'); el.value=NEG; el.select(); document.execCommand('copy'); flash(); }
+function flash(){ const b=document.querySelector('.pane.on button.primary'); const o=b.textContent; b.textContent='已复制'; setTimeout(()=>b.textContent=o,1200); }
+function demo(){
+  document.getElementById('product').value='蓝色硅胶握力圈，配银色登山扣与粉色编织绳，下方坠着迷你蓝色哑铃吊坠';
+  document.getElementById('scene').value='城市公交站台（夜）';
+  document.getElementById('board').value='站台夜光灯箱';
+  document.getElementById('people').value='一位拎电脑包的通勤者';
+  document.getElementById('color').value='浅灰与深蓝渐变';
+  document.getElementById('material').value='哑光表面细腻，边缘柔和过渡光';
+  document.getElementById('light').value='站台顶棚暖黄路灯，背景虚化车流光斑';
+  document.getElementById('t1').value='等公交的3分钟，够捏100下';
+  document.getElementById('t2').value='入门握力圈，随手一捏就开练';
+  document.getElementById('s1').value='10/20LB两档'; document.getElementById('s2').value='挂包不占地'; document.getElementById('s3').value='通勤随手练';
+  gen();
+}
+function clearAll(){ document.querySelectorAll('.pane:first-child input').forEach(i=>i.value=''); document.getElementById('out').value=''; }
+
+/* ---------- 状态条 ---------- */
+function st(id,msg,cls){ const e=document.getElementById(id); e.textContent=msg; e.className='status on'+(cls?' '+cls:''); }
+function stHide(id){ document.getElementById(id).className='status'; }
+
+/* ---------- 报错翻译 & 出图参数 ---------- */
+function errMsg(e){
+  const m=(e&&e.message)||'未知错误';
+  if(m.indexOf('ModelNotOpen')>=0||m.indexOf('has not activated')>=0)
+    return m+' → 模型未开通：去火山方舟控制台「开通管理」开通它（新账号默认一个模型都没开）';
+  if(m.indexOf('InvalidEndpointOrModel')>=0||m.indexOf('does not exist or you do not have access')>=0)
+    return m+' → 模型 ID 不存在或已下线：去「开通管理」查当前可用模型，复制带日期后缀的完整 ID';
+  if(m.indexOf('AuthenticationError')>=0||m.indexOf('401')>=0)
+    return m+' → API Key 无效或过期，重新粘贴，注意首尾不要带空格';
+  if(m.indexOf('AccessDenied')>=0||m.indexOf('403')>=0)
+    return m+' → 无权限：模型刚开通需等 2-3 分钟生效，或账号未实名 / 未授权该模型';
+  if(m.indexOf('429')>=0||m.indexOf('RateLimit')>=0)
+    return m+' → 余额不足或请求过于频繁，稍后重试';
+  if(m.indexOf('image size must be at least')>=0||(m.indexOf('InvalidParameter')>=0&&m.indexOf('size')>=0))
+    return m+' → 尺寸太小：Seedream 4.0+ 要求至少约 368 万像素（1920×1920）。把「出图尺寸」改成 1920×2560 或 2048×2048 再试';
+  if(m.indexOf('response_format')>=0)
+    return m+' → 该模型不接受此参数，把「响应格式」改回「自动」再试';
+  if(m.indexOf('400')>=0)
+    return m+' → 参数不被接受，检查尺寸与响应格式设置';
+  if(m.indexOf('Failed to fetch')>=0||m.indexOf('NetworkError')>=0||m.indexOf('ERR_')>=0)
+    return m+' → 网络不通或被跨域拦截，换国内接口或改用本地中转';
+  if(m.indexOf('404')>=0)
+    return m+' → 检查模型名称是否填写、是否带完整日期后缀、是否已在控制台开通';
+  return m;
+}
+function checkImgCfg(){
+  const miss=[];
+  if(!v('imgBase')) miss.push('接口地址 Base URL');
+  if(!v('imgKey')) miss.push('API Key');
+  if(!v('imgModel')) miss.push('生图模型名称');
+  return miss;
+}
+function buildImgBodyOf(model,prompt,size,n){
+  const b={model:model, prompt:prompt, size:size, n:n};
+  const fmt=document.getElementById('imgFmt').value;
+  if(fmt==='url'||fmt==='b64_json') b.response_format=fmt;
+  return b;
+}
+function buildImgBody(prompt,size,n){ return buildImgBodyOf(v('imgModel').trim(), prompt, size, n); }
+function adaptSize(model,size){
+  if(/dall-e|gpt-image/i.test(model)){
+    const map={'1920x2560':'1024x1536','2048x2048':'1024x1024','2560x1920':'1536x1024'};
+    return map[size]||size;
+  }
+  return size;
+}
+
+/* ---------- 配置 ---------- */
+const CFG_KEY='xhs_cover_cfg_v1';
+function currentCfg(){
+  return {
+    llmBase:v('llmBase'), llmPath:v('llmPath')||'/chat/completions', llmKey:v('llmKey'), llmModel:v('llmModel'),
+    imgBase:v('imgBase'), imgPath:v('imgPath')||'/images/generations', imgKey:v('imgKey'), imgModel:v('imgModel'),
+    imgFmt:document.getElementById('imgFmt').value
+  };
+}
+function saveCfg(){
+  const c=currentCfg();
+  localStorage.setItem(CFG_KEY, JSON.stringify(c));
+  const miss=[];
+  if(!c.llmBase||!c.llmKey||!c.llmModel) miss.push('反推/裂变（多模态大模型）');
+  if(!c.imgBase||!c.imgKey||!c.imgModel) miss.push('出图（生图模型）');
+  if(miss.length) st('stB','已保存，但以下还没填全：'+miss.join('、')+'。缺模型名称会导致 404。','err');
+  else st('stB','配置已保存到本机浏览器','ok');
+}
+function loadCfg(){
+  try{ const c=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');
+    for(const k in c){ const e=document.getElementById(k); if(e&&c[k]) e.value=c[k]; }
+  }catch(e){}
+}
+function clearCfg(){ localStorage.removeItem(CFG_KEY); st('stB','已清除本机配置'); }
+/* ---------- 导出到「AI图片生成器」 ---------- */
+function exportCfg(){
+  const c=currentCfg();
+  if(!c.llmBase&&!c.imgBase){ st('stB','还没有可导出的地址，请先填 Base URL','err'); return; }
+  const payload=JSON.stringify({'__src':'xhs-cover-prompt-generator','__v':1,'__at':new Date().toISOString(),...c},null,2);
+  try{ dl('封面生成器-API配置.json', payload, 'application/json;charset=utf-8'); }
+  catch(e){ st('stB','导出失败：'+e.message+'。可改用「复制配置」粘贴到小刀工具箱','err'); return; }
+  st('stB','已导出配置 JSON。在小刀工具箱「设置 → 服务配置 → ③ 从封面提示词生成器同步配置」里选「从 JSON 文件导入」','ok');
+}
+function copyCfg(){
+  const c=currentCfg();
+  if(!c.llmBase&&!c.imgBase){ st('stB','还没有可复制的地址，请先填 Base URL','err'); return; }
+  const txt=JSON.stringify(c);
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(txt)
+      .then(()=>st('stB','配置 JSON 已复制 → 到「AI图片生成器」设置里点「从剪贴板读取」即可','ok'))
+      .catch(()=>st('stB',txt));
+  } else st('stB',txt);
+}
+function applyPreset(){
+  const p=document.getElementById('preset').value;
+  const m={
+    openai:{b:'https://api.openai.com/v1',p:'/chat/completions',m:'gpt-4o',ib:'https://api.openai.com/v1',ip:'/images/generations',im:'gpt-image-1'},
+    ark:{b:'https://ark.cn-beijing.volces.com/api/v3',p:'/chat/completions',m:'doubao-seed-2-0-lite-260428',ib:'https://ark.cn-beijing.volces.com/api/v3',ip:'/images/generations',im:'doubao-seedream-5-0-260128'},
+    qwen:{b:'https://dashscope.aliyuncs.com/compatible-mode/v1',p:'/chat/completions',m:'qwen-vl-max',ib:'https://dashscope.aliyuncs.com/compatible-mode/v1',ip:'/images/generations',im:'qwen-image'},
+    zhipu:{b:'https://open.bigmodel.cn/api/paas/v4',p:'/chat/completions',m:'glm-4v-plus',ib:'https://open.bigmodel.cn/api/paas/v4',ip:'/images/generations',im:'cogview-4'},
+    kimi:{b:'https://api.moonshot.cn/v1',p:'/chat/completions',m:'moonshot-v1-8k-vision-preview',ib:'https://api.moonshot.cn/v1',ip:'/images/generations',im:''}
+  }[p];
+  if(!m) return;
+  document.getElementById('llmBase').value=m.b; document.getElementById('llmPath').value=m.p; document.getElementById('llmModel').value=m.m;
+  document.getElementById('imgBase').value=m.ib; document.getElementById('imgPath').value=m.ip; document.getElementById('imgModel').value=m.im;
+}
+
+/* ---------- LLM 调用 ---------- */
+async function chat(messages, maxTokens){
+  const base=(v('llmBase')||'').replace(/\/+$/,''), path=v('llmPath')||'/chat/completions', key=v('llmKey'), model=v('llmModel');
+  if(!base||!key||!model) throw new Error('请先在「生图 API 设置」里填写接口地址、API Key 与模型名称');
+  const r = await fetch(base+path,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({model, messages, temperature:0.8, max_tokens: maxTokens||2000})
+  });
+  if(!r.ok) throw new Error('接口返回 '+r.status+'：'+(await r.text()).slice(0,300));
+  const j = await r.json();
+  const txt = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+  if(!txt) throw new Error('返回内容为空：'+JSON.stringify(j).slice(0,300));
+  return txt.trim();
+}
+
+/* ---------- 图片导入 ---------- */
+const drop=document.getElementById('drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');handleFiles(e.dataTransfer.files)});
+document.getElementById('file').addEventListener('change',e=>handleFiles(e.target.files));
+
+function handleFiles(files){
+  const arr=[...files].filter(f=>f.type.startsWith('image/'));
+  if(!arr.length) return;
+  let done=0;
+  arr.forEach(f=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      imgs.push({name:f.name, data:fr.result, rev:''});
+      done++;
+      renderThumbs();
+      if(done===arr.length){ curIdx = imgs.length-arr.length; renderThumbs(); showCur(); autoReverse(); }
+    };
+    fr.readAsDataURL(f);
+  });
+}
+function renderThumbs(){
+  const box=document.getElementById('thumbs');
+  box.innerHTML=imgs.map((im,i)=>`<div class="thumb ${i===curIdx?'on':''}" onclick="pick(${i})" title="${im.name}"><img src="${im.data}"></div>`).join('');
+}
+function pick(i){ curIdx=i; renderThumbs(); showCur(); }
+function showCur(){
+  const im=imgs[curIdx]; const pv=document.getElementById('preview');
+  if(!im){ pv.style.display='none'; return; }
+  pv.src=im.data; pv.style.display='block';
+  document.getElementById('revOut').value = im.rev || '';
+}
+function clearImgs(){ imgs=[]; curIdx=-1; variants=[]; shots=[]; renderThumbs(); showCur(); document.getElementById('varlist').innerHTML=''; document.getElementById('gallery').innerHTML=''; document.getElementById('revOut').value=''; }
+
+/* ---------- 反推 ---------- */
+async function autoReverse(){
+  if(curIdx<0) return;
+  st('st2','已导入图片，正在反推提示词…');
+  try{ await reverseCurrent(); }catch(e){ st('st2','自动反推失败：'+e.message,'err'); }
+}
+async function reverseCurrent(){
+  if(curIdx<0){ st('st2','请先导入图片','err'); return; }
+  const im=imgs[curIdx];
+  st('st2','正在反推第 '+(curIdx+1)+' 张…');
+  try{
+    const txt=await chat([{role:'user',content:[
+      {type:'image_url', image_url:{url: im.data}},
+      {type:'text', text: REV_RULE}
+    ]}]);
+    im.rev=txt; showCur();
+    st('st2','反推完成，共 '+txt.length+' 字','ok');
+  }catch(e){ st('st2','反推失败：'+e.message,'err'); }
+}
+async function reverseAll(){
+  for(let i=0;i<imgs.length;i++){ curIdx=i; renderThumbs(); showCur(); await reverseCurrent(); }
+  st('st2','全部 '+imgs.length+' 张反推完成','ok');
+}
+function copyRev(){ const el=document.getElementById('revOut'); el.select(); document.execCommand('copy'); st('st2','已复制反推结果','ok'); }
+function toFission(){ document.getElementById('revOut').scrollIntoView({behavior:'smooth'}); tab(1); }
+
+/* ---------- 裂变 ---------- */
+document.getElementById('dims').addEventListener('click',e=>{
+  if(e.target.classList.contains('chip')) e.target.classList.toggle('on');
+});
+function getDims(){ return [...document.querySelectorAll('#dims .chip.on')].map(c=>c.dataset.d); }
+function toFissionText(){ return (document.getElementById('revOut').value||'').trim(); }
+
+async function fission(){
+  const base=toFissionText();
+  if(!base){ st('st2','请先导入图片并完成反推','err'); return; }
+  const dims=getDims(); if(!dims.length){ st('st2','至少选择一个裂变维度','err'); return; }
+  const n=parseInt(document.getElementById('fcount').value,10);
+  const extra=v('fextra');
+  const rule = "你是提示词裂变专家。下面有一条原始图像提示词，请基于它生成 "+n+" 条变体。\n" +
+    "规则：\n" +
+    "1. 主体（商品/人物/核心对象）必须保持一致，不要换成别的东西；\n" +
+    "2. 每次只变化这些维度：" + dims.join('、') + "，其余要素尽量保留；\n" +
+    "3. 每条变体之间要有明显差异，不要只换一两个词；\n" +
+    "4. 每条都是完整可独立使用的中文提示词，一段式，200 到 350 字；\n" +
+    "5. 不要编号、不要标题、不要解释、不要前言、不要任何英文；\n" +
+    "6. 每条之间用单独一行的 >>> 分隔，除此之外不要出现该符号。\n" +
+    (extra ? "7. 每条都要满足附加要求：" + extra + "\n" : "") +
+    "\n原始提示词：\n" + base;
+  st('st2','正在裂变生成 '+n+' 条…');
+  try{
+    const txt=await chat([{role:'user',content:rule}], 4000);
+    let parts=txt.split(/\n?>>>+\n?/).map(s=>s.trim()).filter(s=>s.length>20);
+    if(parts.length<2) parts=txt.split(/\n{2,}/).map(s=>s.trim()).filter(s=>s.length>20);
+    variants=parts.slice(0,n).map(t=>({text:t, shots:[]}));
+    renderVars();
+    st('st2','裂变完成，生成 '+variants.length+' 条','ok');
+  }catch(e){ st('st2','裂变失败：'+e.message,'err'); }
+}
+function renderVars(){
+  const box=document.getElementById('varlist');
+  box.innerHTML=variants.map((vr,i)=>`
+    <div class="varitem">
+      <div class="vhead"><span>变体 ${i+1}</span><span><button onclick="delVar(${i})">删除</button></span></div>
+      <textarea data-i="${i}" oninput="variants[${i}].text=this.value">${vr.text.replace(/</g,'&lt;')}</textarea>
+    </div>`).join('');
+}
+function delVar(i){ variants.splice(i,1); renderVars(); }
+function copyAll(){
+  if(!variants.length){ st('st2','还没有变体','err'); return; }
+  const t=variants.map((v,i)=>v.text).join('\n\n');
+  navigator.clipboard ? navigator.clipboard.writeText(t) : alert(t);
+  st('st2','已复制全部变体','ok');
+}
+function dl(name, content, type){
+  const mime=type||'text/plain;charset=utf-8';
+  const a=document.createElement('a'); a.download=name;
+  let u=null;
+  try{ if(typeof URL!=='undefined' && URL.createObjectURL) u=URL.createObjectURL(new Blob([content],{type:mime})); }catch(e){}
+  a.href = u || ('data:'+mime+','+encodeURIComponent(content));   // 受限环境回退到 data URL
+  document.body.appendChild(a); a.click(); a.remove();
+  if(u) setTimeout(()=>{ try{ URL.revokeObjectURL(u); }catch(e){} },1500);
+  return true;
+}
+function exportTxt(){ if(!variants.length) return; dl('裂变提示词.txt', variants.map((v,i)=>'变体 '+(i+1)+'\n'+v.text).join('\n\n')); }
+function exportCsv(){
+  if(!variants.length) return;
+  const rows=[['序号','提示词']].concat(variants.map((v,i)=>[i+1, v.text.replace(/"/g,'""')]));
+  dl('裂变提示词.csv','\ufeff'+rows.map(r=>'"'+r[0]+'","'+r[1]+'"').join('\n'),'text/csv;charset=utf-8');
+}
+
+/* ---------- 生图 ---------- */
+async function genImages(){
+  if(!variants.length){ st('st4','请先生成变体','err'); return; }
+  const miss=checkImgCfg();
+  if(miss.length){ st('st4','还差这几项没填：'+miss.join('、')+'，请去「生图 API 设置」补上','err'); tab(2); return; }
+  const base=v('imgBase').replace(/\/+$/,''), path=v('imgPath')||'/images/generations', key=v('imgKey').trim();
+  let size=adaptSize(v('imgModel').trim(), v('isize')), n=parseInt(document.getElementById('in').value,10);
+  if(v('imgModel').indexOf('dall-e-3')>=0 && n>1){ n=1; st('st4','dall-e-3 每次只能出 1 张，已自动改为 1'); }
+  st('st4','开始生成，共 '+variants.length+' 条 × '+n+' 张，请稍候…');
+  let cnt=0, fail=0;
+  for(let i=0;i<variants.length;i++){
+    st('st4','正在生成第 '+(i+1)+'/'+variants.length+' 条…');
+    try{
+      const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify(buildImgBody(variants[i].text, size, n))});
+      if(!r.ok) throw new Error('接口返回 '+r.status+'：'+(await r.text()).slice(0,300));
+      const j=await r.json();
+      const arr=(j.data||[]).map(d=>d.url||(d.b64_json?('data:image/png;base64,'+d.b64_json):null)).filter(Boolean);
+      arr.forEach(u=>{ shots.push({url:u, name:'变体'+(i+1)+'-'+(++cnt)+'.png'}); });
+      renderGallery();
+      fail=0;
+    }catch(e){ fail++; st('st4','第 '+(i+1)+' 条失败：'+errMsg(e),'err'); break; }
+  }
+  if(!fail) st('st4','生成完成，本次共 '+shots.length+' 张','ok');
+}
+function renderGallery(){
+  document.getElementById('gallery').innerHTML = shots.map((s,i)=>`
+    <div class="shot"><img src="${s.url}"><div class="cap"><button onclick="dlShot(${i})">下载</button></div></div>`).join('');
+}
+function dlShot(i){
+  const a=document.createElement('a'); a.href=shots[i].url; a.download=shots[i].name; a.target='_blank'; a.click();
+}
+function downloadAll(){
+  if(!shots.length){ st('st4','还没有生成图片','err'); return; }
+  st('st4','开始下载 '+shots.length+' 张，浏览器可能提示"允许多文件下载"');
+  shots.forEach((s,i)=>setTimeout(()=>dlShot(i), i*400));
+}
+
+/* ---------- 模型可用性探测 ---------- */
+const CHAT_CANDIDATES=[
+  'doubao-seed-2-0-lite-260428',
+  'doubao-seed-2-0-pro-260215',
+  'doubao-seed-2-0-mini-260428',
+  'doubao-seed-2-1-pro-260628',
+  'doubao-seed-1-6-flash-250828'
+];
+const IMG_CANDIDATES=[
+  'doubao-seedream-5-0-260128',
+  'doubao-seedream-5-0-lite-260128',
+  'doubao-seedream-4-5-251128',
+  'doubao-seedream-4-0-250828'
+];
+
+function probeLine(mdl,txt,cls){
+  const box=document.getElementById('probeOut');
+  const el=document.createElement('div');
+  el.className='probe'+(cls?' '+cls:'');
+  el.textContent=mdl+'：'+txt;
+  box.appendChild(el);
+  return el;
+}
+function judge(text){
+  if(text.indexOf('ModelNotOpen')>=0||text.indexOf('has not activated')>=0) return ['未开通（去控制台「开通管理」开通）','bad'];
+  if(text.indexOf('InvalidEndpointOrModel')>=0||text.indexOf('does not exist')>=0) return ['模型不存在或已下线','bad'];
+  if(text.indexOf('AuthenticationError')>=0) return ['Key 无效','bad'];
+  if(text.indexOf('AccessDenied')>=0) return ['无权限（可能刚开通未生效）','bad'];
+  if(text.indexOf('429')>=0) return ['限流或余额不足','bad'];
+  return [text.slice(0,100),'bad'];
+}
+
+async function probeChat(){
+  const base=(v('llmBase')||'').replace(/\/+$/,''), path=v('llmPath')||'/chat/completions', key=v('llmKey');
+  if(!base||!key){ st('stC','请先填好读图模型的 Base URL 和 API Key','err'); return; }
+  document.getElementById('probeOut').innerHTML='';
+  st('stC','开始探测 '+CHAT_CANDIDATES.length+' 个候选模型…');
+  let okList=[];
+  for(const mdl of CHAT_CANDIDATES){
+    const el=probeLine(mdl,'测试中…');
+    try{
+      const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key.trim()},
+        body:JSON.stringify({model:mdl, messages:[{role:'user',content:'hi'}], max_tokens:1})});
+      if(r.ok){ el.textContent=mdl+'：可用 ✔'; el.className='probe ok'; okList.push(mdl); }
+      else{ const t=await r.text(); const j=judge(t); el.textContent=mdl+'：'+j[0]; el.className='probe '+j[1]; }
+    }catch(err){ el.textContent=mdl+'：请求失败 '+err.message; el.className='probe bad'; }
+  }
+  st('stC', okList.length? ('可用：'+okList.join('、')+'　→ 直接填进「视觉模型名称」') : '没有探测到可用模型，请先去控制台「开通管理」开通', okList.length?'ok':'err');
+}
+
+async function probeImg(){
+  const base=(v('imgBase')||'').replace(/\/+$/,''), path=v('imgPath')||'/images/generations', key=v('imgKey');
+  if(!base||!key){ st('stC','请先填好生图模型的 Base URL 和 API Key','err'); return; }
+  if(!confirm('出图探测会对每个已开通的模型真实生成 1 张小图（各约几分钱）。继续？')) return;
+  document.getElementById('probeOut').innerHTML='';
+  st('stC','开始探测，已开通的模型会真出一张小图…');
+  let okList=[];
+  for(const mdl of IMG_CANDIDATES){
+    const el=probeLine(mdl,'测试中…');
+    try{
+      const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key.trim()},
+        body:JSON.stringify(buildImgBodyOf(mdl,'白色陶瓷杯放在木桌上，自然光', '2048x2048', 1))});
+      if(r.ok){
+        const j=await r.json(); const d=(j.data||[])[0];
+        const u=d && (d.url||(d.b64_json&&('data:image/png;base64,'+d.b64_json)));
+        el.className='probe ok';
+        el.textContent=mdl+'：可用 ✔';
+        if(u){ const img=document.createElement('img'); img.src=u; img.style.cssText='max-width:120px;display:block;margin:6px 0;border-radius:6px'; el.appendChild(img); }
+        okList.push(mdl);
+      }else{ const t=await r.text(); const j2=judge(t); el.textContent=mdl+'：'+j2[0]; el.className='probe '+j2[1]; }
+    }catch(err){ el.textContent=mdl+'：请求失败 '+err.message; el.className='probe bad'; }
+  }
+  st('stC', okList.length? ('可用：'+okList.join('、')+'　→ 直接填进「生图模型名称」') : '没有探测到可用生图模型，请先去控制台「开通管理」开通', okList.length?'ok':'err');
+}
+
+/* ---------- 测试 ---------- */
+async function testLLM(){
+  st('stA','测试中…');
+  try{ const t=await chat([{role:'user',content:'回复两个字：可用'}]); st('stA','连接成功，模型回复：'+t.slice(0,40),'ok'); }
+  catch(e){ st('stA','连接失败：'+e.message,'err'); }
+}
+async function testImg(){
+  const miss=checkImgCfg();
+  if(miss.length){ st('stB','还差这几项没填：'+miss.join('、')+'。缺「生图模型名称」会直接 404。','err'); return; }
+  st('stB','测试中，会生成一张小图…');
+  try{
+    const base=v('imgBase').replace(/\/+$/,''), path=v('imgPath')||'/images/generations';
+    const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+v('imgKey').trim()},
+      body:JSON.stringify(buildImgBody('一个白色陶瓷杯放在木桌上，自然光，产品摄影','2048x2048',1))});
+    if(!r.ok) throw new Error('接口返回 '+r.status+'：'+(await r.text()).slice(0,300));
+    const j=await r.json();
+    const d=(j.data||[])[0];
+    const u=d && (d.url||d.b64_json&&('data:image/png;base64,'+d.b64_json));
+    if(!u) throw new Error('未返回图片，原始响应：'+JSON.stringify(j).slice(0,200));
+    shots.push({url:u,name:'测试图.png'}); renderGallery();
+    st('stB','生图接口可用，成功出图 1 张','ok');
+  }catch(e){ st('stB','生图失败：'+errMsg(e),'err'); }
+}
+
+window.onload=()=>{ loadCfg(); demo(); };
+</script>
+</body>
+</html>

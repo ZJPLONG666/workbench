@@ -1399,7 +1399,7 @@ function syncShopBadge(){var el=document.getElementById('saleShop');if(!el)retur
       <button class="pillbtn dark" onclick="window.open('ai-image.html?v='+(typeof AIIMG_VER!=='undefined'?AIIMG_VER:Date.now()),'_blank')">⛶ 全屏打开</button>
     </div>
     <p class="text-xs mb-3 font-bold" style="color:var(--ink-2)">爆款封面提示词生成 · 参考图反推 · 多维裂变 · 批量出图 · 支持豆包 Seedream / 即梦 / OpenAI 兼容接口</p>
-    <div class="aiiw-wrap"><iframe id="aiImgFrame" title="AI图片生成器" loading="lazy"></iframe></div>
+    <div class="aiiw-wrap"><iframe id="aiImgFrame" title="AI图片生成器" loading="lazy" allow="clipboard-read; clipboard-write"></iframe></div>
   </section>
 
   <section id="view-sync" class="view">
@@ -1731,7 +1731,7 @@ function loadRadar(force){
 }
 function radarReload(){loadRadar(true);}
 /* ===================== AI 图片生成器（iframe 懒加载 + 主题跟随） ===================== */
-const AIIMG_VER='7d9d5745';   // 应用文件内容哈希：改版后同步更新，避开浏览器缓存
+const AIIMG_VER='9812770b';   // 应用文件内容哈希：改版后同步更新，避开浏览器缓存
 function aiImgTheme(){return document.documentElement.dataset.theme==='dark'?'dark':'light';}
 function loadAiImg(force){
   const f=document.getElementById('aiImgFrame'); if(!f)return;

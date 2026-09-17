@@ -2112,6 +2112,9 @@ const CFG_SYNC = {
   },
 
   /* ---------- 小工具 ---------- */
+  /* CFG.data 在 boot() 完成前为 null，这里统一做兜底，避免读取面板时抛错 */
+  chans() { return (CFG.data && Array.isArray(CFG.data.channels)) ? CFG.data.channels : []; },
+  adv() { return (CFG.data && CFG.data.adv) || {}; },
   nbase: b => String(b || '').replace(/\/+$/, ''),
   hostOf(b) { const m = String(b || '').match(/^https?:\/\/([^/?#]+)/i); return m ? m[1] : String(b || ''); },
   maskKey(k) { const s = String(k || ''); if (!s) return ''; return s.length <= 8 ? s.slice(0, 2) + '****' : s.slice(0, 4) + '****' + s.slice(-4); },
@@ -2170,11 +2173,11 @@ const CFG_SYNC = {
     if (cfg.imgKey && !cfg.imgBase) warns.push('填了生图密钥但没有生图地址，该密钥已忽略。');
     if (cfg.llmBase && !cfg.llmModel) warns.push('源配置没填「反推 / 裂变模型名」，导入后需手动补。');
     if (cfg.imgBase && !cfg.imgModel) warns.push('源配置没填「生图模型名」，导入后需手动补。');
-    if (CFG.data.adv && CFG.data.adv.relay) warns.push('本应用已开启「本地中转」，中转地址会覆盖导入的 Base URL——导入后请到「高级设置」确认。');
+    if (this.adv().relay) warns.push('本应用已开启「本地中转」，中转地址会覆盖导入的 Base URL——导入后请到「高级设置」确认。');
 
     const claimed = new Set();
     const findOld = g => {
-      const cand = CFG.data.channels.filter(c => this.nbase(c.base) === g.base && !claimed.has(c.id));
+      const cand = this.chans().filter(c => this.nbase(c.base) === g.base && !claimed.has(c.id));
       if (!cand.length) return null;
       const pick = !g._split
         ? cand[0]
@@ -2231,6 +2234,7 @@ const CFG_SYNC = {
   /* ---------- 生效 ---------- */
   apply() {
     if (!this.src) { UI.toast('没有可导入的配置，请先读取或粘贴', 'warn', 4000); return; }
+    if (!CFG.data) { UI.toast('应用尚未初始化完成，请等一秒再试', 'warn', 4000); return; }
     const clearEl = $('#syncClear');
     const clearFirst = !!(clearEl && clearEl.checked);
     if (clearFirst && !confirm('将先清空现有的全部渠道与任务指派，再导入新配置。确定继续？')) return;
@@ -2272,9 +2276,37 @@ const CFG_SYNC = {
   /* ---------- 交互 ---------- */
   useAuto() {
     const c = this.readLocal();
-    if (!c) { UI.toast('没读到本机配置。请确认两个页面同源，或改用「从 JSON 文件导入」/ 直接粘贴', 'warn', 6000); return; }
+    if (!c) {
+      UI.toast('本页与生成器不同源，读不到它的本地存储。请用「从剪贴板读取」，或把生成器在本页同一网址下打开后重试', 'warn', 7000);
+      this.render(); return;
+    }
     this.src = c; this.srcKind = 'auto'; this.pasteErr = '';
     LOG.info('已读取本机「封面提示词生成器」配置');
+    this.render();
+  },
+  /* 一步到位：生成器里点「复制配置」后，回来点这个按钮 */
+  async useClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      this.pasteErr = '当前浏览器不允许读取剪贴板（需要 https 且授予剪贴板权限）。请手动粘贴到下面的输入框。';
+      this.render(); return;
+    }
+    let t = '';
+    try { t = await navigator.clipboard.readText(); }
+    catch (e) {
+      this.pasteErr = '读取剪贴板被拒绝。请在弹出的权限提示里点「允许」，或手动粘贴到下面的输入框。';
+      LOG.warn('剪贴板读取失败：' + (e && e.message));
+      this.render(); return;
+    }
+    const c = this.parseText(t);
+    if (!c) {
+      this.src = null; this.srcKind = '';
+      this.pasteErr = '剪贴板里没找到有效的配置 JSON。请先在生成器页点「复制配置」再回来。';
+      this.render(); return;
+    }
+    this.pasteText = String(t).trim();
+    this.src = c; this.srcKind = 'clip'; this.pasteErr = '';
+    LOG.info('已从剪贴板读取配置');
+    UI.toast('已从剪贴板读取到配置', 'ok');
     this.render();
   },
   usePaste() {
@@ -2302,33 +2334,50 @@ const CFG_SYNC = {
   reset() { this.src = null; this.srcKind = ''; this.pasteErr = ''; this.pasteText = ''; this.render(); },
 
   /* ---------- 渲染 ---------- */
+  originText() {
+    try {
+      if (location.protocol === 'file:') return 'file://（本地文件）';
+      const o = location.origin;
+      return (o && o !== 'null') ? o : '未知来源';
+    } catch (e) { return '未知来源'; }
+  },
   render() {
     const box = $('#syncSrcBox'); if (!box) return;
     const auto = this.readLocal();
     let bcls = 'warn', dcls = 'bad', txt;
     if (this.src) {
       bcls = 'ok'; dcls = 'ok';
-      txt = { auto: '已从本机读取到配置', paste: '已解析粘贴内容', file: '已读取 JSON 文件' }[this.srcKind] || '已载入配置';
+      txt = { auto: '已从本机读取到配置', clip: '已从剪贴板读取到配置', paste: '已解析粘贴内容', file: '已读取 JSON 文件' }[this.srcKind] || '已载入配置';
     } else if (auto) {
       bcls = ''; dcls = 'idle';
       txt = '检测到本机配置，点「读取本机配置」即可预览';
     } else {
-      txt = '未检测到本机配置（可能不同源）——请用文件导入或粘贴';
+      txt = '本页读不到生成器的本地存储（两页不同源）——见下方三步';
     }
 
     let h = `<div class="kv"><b>数据源</b>：封面提示词生成器 ｜ localStorage 键 <code class="mono">${SYNC_SRC_KEY}</code><br>
       <b>状态</b>：<span class="badge ${bcls}"><span class="dot ${dcls}"></span>${esc(txt)}</span></div>
+      <div class="hint" style="margin-top:8px">本页所在源：<code class="mono">${esc(this.originText())}</code>。浏览器的本地存储按<b>源</b>隔离——生成器只有在与本页<b>同一个网址</b>下打开时才读得到；双击打开的本地 html 属 file:// 源，与网页版互不相通。</div>
       <div class="btn-row" style="margin-top:10px">
+        <button class="btn sm primary" onclick="CFG_SYNC.useClipboard()">从剪贴板读取</button>
         <button class="btn sm" onclick="CFG_SYNC.useAuto()">读取本机配置</button>
         <button class="btn sm" onclick="CFG_SYNC.pickFile()">从 JSON 文件导入</button>
         <button class="btn sm ghost" onclick="CFG_SYNC.reset()">清空</button>
       </div>`;
 
+    if (!this.src && !auto) h += `<div class="tip warn" style="margin-top:10px">
+      <b>三步同步（约 20 秒）：</b><br>
+      ① 打开 <a href="cover-prompt.html" target="_blank" rel="noopener">封面提示词生成器</a>，确认 API 配置已填好（也可以先打开你本地那份已填好的）<br>
+      ② 在生成器里点「<b>复制配置</b>」<br>
+      ③ 回到本页点「<b>从剪贴板读取</b>」，确认预览无误后点底部「应用同步」<br>
+      <span class="muted">一次性工作：以后在①这个同源生成器里填好，本页「读取本机配置」就能直接识别，不用再复制粘贴。</span>
+    </div>`;
+
     if (this.pasteErr) h += `<div class="tip warn" style="margin-top:10px">${esc(this.pasteErr)}</div>`;
 
     h += `<div class="field" style="margin-top:12px"><label>或直接粘贴配置 JSON</label>
       <textarea id="syncPaste" style="min-height:72px" placeholder='{"llmBase":"https://...","llmKey":"sk-...","llmModel":"...","imgBase":"https://...","imgKey":"sk-...","imgModel":"..."}' oninput="CFG_SYNC.pasteText=this.value">${esc(this.pasteText)}</textarea>
-      <div class="hint">在生成器页按 F12 → Console 粘贴 <code class="mono">localStorage.getItem('${SYNC_SRC_KEY}')</code> 回车，复制结果贴到这里即可。</div></div>
+      <div class="hint">手动方式：在生成器页点「复制配置」，或按 F12 → Console 执行 <code class="mono">localStorage.getItem('${SYNC_SRC_KEY}')</code>，把复制到的内容贴到这里。</div></div>
       <div class="btn-row"><button class="btn sm primary" onclick="CFG_SYNC.usePaste()">解析粘贴内容</button></div>`;
 
     if (this.src) {
