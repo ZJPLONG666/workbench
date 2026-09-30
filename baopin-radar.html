@@ -713,7 +713,7 @@ input[type=radio] { position:absolute; opacity:0; width:0; height:0; margin:0; p
 #v-main:checked ~ .wrap label[for=v-main].kpi,#v-cont:checked ~ .wrap label[for=v-cont].kpi,#v-fresh:checked ~ .wrap label[for=v-fresh].kpi,#v-back:checked ~ .wrap label[for=v-back].kpi,#v-growth:checked ~ .wrap label[for=v-growth].kpi{background:#fff5f8;box-shadow:inset 0 0 0 1px #ff2d55;}
 #v-main:checked ~ .wrap label[for=v-main].kpi .go,#v-cont:checked ~ .wrap label[for=v-cont].kpi .go,#v-fresh:checked ~ .wrap label[for=v-fresh].kpi .go,#v-back:checked ~ .wrap label[for=v-back].kpi .go,#v-growth:checked ~ .wrap label[for=v-growth].kpi .go{color:#e11d48;}
 @media (max-width:1100px) { .kpis,.rules,.t3 { grid-template-columns:repeat(2,1fr); } .dtabs { grid-template-columns:repeat(4,1fr); } .searchrow { grid-template-columns:1fr; } }
-@media (max-width:1400px) { .twrap { overflow-x:auto; } th { position:static; } }
+@media (max-width:1400px) { .twrap { overflow:auto; max-height:calc(100vh - 180px); } th { top:0; box-shadow:inset 0 -1px 0 #e6eaf2; } }
 </style></head>
 <body>
 
