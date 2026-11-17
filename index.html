@@ -1001,11 +1001,11 @@ html[data-theme="dark"] .pf-up{color:#E08A73} html[data-theme="dark"] .pf-dn{col
 .pf-warn{margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:var(--pink-soft);font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.7}
 
 /* ==================== 打品时间规划 ==================== */
-.dp-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:start}
+.dp-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:stretch}
 @media(max-width:1180px){.dp-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 @media(max-width:720px){.dp-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .dp-col{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-md);
-  padding:9px 9px 10px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:120px;
+  padding:9px 9px 10px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:var(--dp-h,120px);
   transition:box-shadow .18s,transform .18s,border-color .18s}
 .dp-col:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .dp-col.now{border-color:var(--badge-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--badge-accent) 26%,transparent)}
@@ -1841,6 +1841,25 @@ function renderDbPlan(){
   html+='</div>';
   wrap.innerHTML=html;
   const tot=document.getElementById('dpTotal'); if(tot)tot.textContent='共 '+dpTotalCount()+' 个品';
+  requestAnimationFrame(dpFitHeight);
+}
+/* 让 12 个月份格子撑满当前可用高度（顶部到 Dock 上方），按行数均分 */
+function dpFitHeight(){
+  var grid=document.querySelector('#dbPlanWrap .dp-grid'); if(!grid)return;
+  var cols=grid.querySelectorAll('.dp-col'); if(!cols.length)return;
+  if(!grid.offsetParent)return;                       /* 视图未显示，跳过 */
+  var cs=getComputedStyle(grid);
+  var nCols=(cs.gridTemplateColumns||'').split(' ').filter(function(x){return x.trim();}).length||12;
+  var rows=Math.max(1,Math.ceil(cols.length/nCols));
+  var rowGap=parseFloat(cs.rowGap)||0;
+  var top=grid.getBoundingClientRect().top;
+  var dock=document.querySelector('.dock');
+  var dockH=dock?dock.getBoundingClientRect().height:0;
+  var bottomPad=(dockH?dockH+22:92)+12;
+  var avail=window.innerHeight-top-bottomPad-rowGap*(rows-1);
+  var h=Math.floor(avail/rows);
+  h=Math.max(rows>2?128:150,Math.min(h,620));
+  grid.style.setProperty('--dp-h',h+'px');
 }
 function dpPopShow(m,col){
   clearTimeout(dpPopTimer);
@@ -1969,7 +1988,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){ dpMenuHide(); dpPopHide(); if(document.getElementById('dpMask')?.classList.contains('on'))dpCloseEdit(); }
 });
 window.addEventListener('scroll',function(){ dpPopHide(); dpMenuHide(); },{passive:true});
-window.addEventListener('resize',function(){ dpPopHide(); dpMenuHide(); });
+window.addEventListener('resize',function(){ dpPopHide(); dpMenuHide(); dpFitHeight(); });
 
 /* ===================== 双十一购物清单 ===================== */
 const ISSUE_FIELDS=['客户名','卖出号','采购单号','物流单号','问题','怎么处理','商家回复状态','目前进度更新','客诉时间','客户问题截图'];
